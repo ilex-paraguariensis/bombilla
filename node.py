@@ -4,8 +4,7 @@ import json
 
 import regex as re
 
-from ..utils.bunch import Bunch
-import random
+from .utils.bunch import Bunch
 import ipdb
 
 SimpleType = Union[str, int, float, bool, None]
