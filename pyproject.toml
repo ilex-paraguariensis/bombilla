@@ -1,0 +1,19 @@
+[project]
+name = "bambilla"
+version = "0.0.1"
+authors = [
+  { name="Ali Rahimi, Giulio Zani", email="yerba.mate.dl@proton.me" }
+]
+description = "A python experiment manager"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Environment :: Console",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/ilex-paraguariensis/bombilla"
+"Bug Tracker" = "https://github.com/ilex-paraguariensis/bombilla/issues"

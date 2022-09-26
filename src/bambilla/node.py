@@ -4,7 +4,6 @@ import json
 
 import regex as re
 
-from .utils.bunch import Bunch
 import ipdb
 
 SimpleType = Union[str, int, float, bool, None]
@@ -182,7 +181,7 @@ class Node:
 
 class NodeDict(Node):
     def __init__(self, args, **kawrgs) -> None:
-        assert type(args) == dict or type(args) == Bunch
+        assert type(args) == dict, "args must be a dict"
         super().__init__(args, **kawrgs)
 
     def __load__(self, parent: Optional[Node] = None):
@@ -245,7 +244,7 @@ class ObjectReference(Node):
 class MethodCall(ObjectReference):
     function_call: str = ""
     reference_key: Optional[str] = None
-    params: Bunch = Bunch({})
+    params: dict = {}
 
     def __call__(self, parent: Optional[object] = None, *args, **kwargs):
 
@@ -269,38 +268,10 @@ class MethodCall(ObjectReference):
         super().__init__(args)
 
 
-class YetAnotherMethodCall(MethodCall):
-    function: str = ""
-    object_key: str = ""
-    params: Bunch = Bunch({})
-
-    def __call__(self, parent: Optional[object] = None, *args, **kwargs):
-
-        if self._py_object != None:
-            return self._py_object
-
-        # first create DictNode of params
-        dictNode = NodeDict(self.params)
-        dictNode.__load__(self)
-        params = dictNode()
-        # print("method call params", params)
-        # ipdb.set_trace()
-
-        # then call the function
-        object = Node._key_value_map[self.reference_key]
-        function = getattr(object, self.function)
-        self._py_object = function(**params)
-        self.post_object_creation()
-        return self._py_object
-
-    def __init__(self, args, parent: Optional[object] = None):
-        super().__init__(args)
-
-
 # Methodcall for objects
 class AnonMethodCall(Node):
     function: str = ""
-    params: Bunch = Bunch({})
+    params: dict = {}
 
     def __load__(self, parent=None) -> object:
 
@@ -314,7 +285,7 @@ class AnonMethodCall(Node):
 class FunctionModuleCall(Node):
     function: str = ""
     module: str = ""
-    params: Bunch = Bunch({})
+    params: dict = {}
     method_args: Optional[list[AnonMethodCall]] = None
 
     def __load__(self, parent=None) -> object:
@@ -371,7 +342,7 @@ def flatten_nameless_params(params: dict) -> dict:
 class Object(Node):
     module: str = ""
     class_name: str = ""
-    params: Bunch = Bunch({})  # param is actualy a dictnode
+    params: dict = {}  # param is actualy a dictnode
     method_args: Optional[list[AnonMethodCall]] = None
 
     def __load__(self, parent: Optional[object] = None) -> object:
@@ -383,8 +354,6 @@ class Object(Node):
 
         self.param_node.__load__()
 
-        # ipdb.set_trace()
-
         return self
 
     def __call__(self, *args, **kwargs):
@@ -392,26 +361,22 @@ class Object(Node):
         if self._py_object != None:
             return self._py_object
 
-        # ipdb.set_trace()
-
         module = self.load_module()
 
         self._py_object = module(**self.param_node())
         self.post_object_creation()
         return self._py_object
 
-    def __init__(self, args: Optional[Bunch], parent: Optional[object] = None):
+    def __init__(self, args: Optional[dict], parent: Optional[object] = None):
         super().__init__(args, parent=parent)
 
     def call_method(self, method_name: str, *args, **kwargs):
-        # ipdb.set_trace()
+
         method_arg_names = [arg["function"] for arg in self.method_args]
         assert method_name in method_arg_names
 
         idx = method_arg_names.index(method_name)
         method_args = self.method_args[idx]["params"]
-
-        # ipdb.set_trace()
 
         method_args = load_node(method_args, parent=self)
         method_args.__load__(self)
