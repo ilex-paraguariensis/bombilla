@@ -10,9 +10,7 @@ bombilla is available on pypi. You can install it with pip:
 pip install bombilla
 ```
 
-# Usage
-
-bombilla is an API that you can use to describe python objects and execute functions in plain json. bombilla can be called to execute everything in the configuration file.
+# API
 
 Example of using bombilla API:
 ```python
@@ -34,7 +32,7 @@ bombilla.find("resnet") # TODO: this is not implemented yet
 ```
 
 
-## Object descriptor
+## Object descriptor format
 
 An object descriptor is a dictionary that describes a python object. The dictionary has the following keys:
 * `module`: the python module where the object is defined
