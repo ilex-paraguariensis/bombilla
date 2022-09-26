@@ -1,6 +1,6 @@
 # Bambilla, API for bamiblla json format and python objects
 
-from node import Node, NodeDict
+from .node import Node, NodeDict
 
 
 class Bambilla:

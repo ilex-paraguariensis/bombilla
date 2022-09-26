@@ -1,9 +1,7 @@
-### Bambilla, A python library for experimental and reproducible research
-
 
 # What is Bambilla?
 
-Bambilla is a python library for experimental and reproducible research. It is designed to help you to keep track of your experiments and to reproduce them. Bambilla is compatible with any python framework for example pytorch lightning, keras and jax. If you need to experiment with hyperparameters and keep track of your experiments, bambilla is for you. Bambilla in a nutshell: define your experiment and hyperparameters in a json configuration file and then execute it with bambilla. 
+Bambilla is a python library for experimental and reproducible research. Bambilla is a python object descriptor in plain json and can be used to execute a configuration. Bambilla is compatible with any python framework for example pytorch lightning, keras and jax. If you need to experiment with hyperparameters and keep track of your experiments, bambilla is for you. Bambilla in a nutshell: define your experiment and hyperparameters in a json configuration file and then execute it with bambilla. 
 
 # Installation
 
