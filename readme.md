@@ -7,7 +7,7 @@ Bambilla is a python library for experimental and reproducible research. Bambill
 
 Bambilla is available on pypi. You can install it with pip:
 ```
-    pip install bambilla
+pip install bambilla
 ```
 
 # Usage

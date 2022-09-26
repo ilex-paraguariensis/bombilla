@@ -23,6 +23,9 @@ class Node:
     def _get_python_object(self) -> object:
         pass
 
+    def find(self):
+        pass
+
     @staticmethod
     def set_config(base_module: str, root_module: str, key_value_map: dict):
         Node._base_module = base_module
@@ -181,6 +184,7 @@ class Node:
 
 class NodeDict(Node):
     def __init__(self, args, **kawrgs) -> None:
+        # ipdb.set_trace()
         assert type(args) == dict, "args must be a dict"
         super().__init__(args, **kawrgs)
 
@@ -228,6 +232,13 @@ class NodeDict(Node):
             if not key.startswith("_") and key in self._original_keys
         }
         return result
+
+    def find(self, key_name):
+        for key, val in self.__dict__.items():
+            if key == key_name:
+                return getattr(self, f"{key}_node")
+
+        return None
 
 
 class ObjectReference(Node):

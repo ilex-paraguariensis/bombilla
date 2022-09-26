@@ -14,8 +14,8 @@ class Bambilla:
 
         assert isinstance(bambilla_dict, dict), "Bambilla must be a dict"
 
-        Node.set_config(base_module, root_module, bambilla_dict, object_key_map)
-        self.root_node = Node(bambilla_dict)
+        Node.set_config(base_module, root_module, object_key_map)
+        self.root_node = NodeDict(dict(bambilla_dict))
 
     def load(self):
         self.root_node.__load__()
@@ -27,6 +27,6 @@ class Bambilla:
         self, method_name: str, object_name: str = None, *args, **kwargs
     ):
 
-        self.root_node.__call_method__(method_name)
+        # self.root_node.__call_method__(method_name)
 
-        self.root_node.find(object_name).method_call(method_name, *args, **kwargs)
+        self.root_node.find(object_name).call_method(method_name, *args, **kwargs)
