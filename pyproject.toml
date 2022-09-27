@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "bombilla"
-version = "0.0.3"
+version = "1.0.3"
 authors = [
   { name="Ali Rahimi, Giulio Zani", email="yerba.mate.dl@proton.me" }
 ]
-description = "A python experiment manager"
+description = "A python configuration and experiment manager"
 readme = "README.md"
 requires-python = ">=3.9"
 classifiers = [
