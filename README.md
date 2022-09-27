@@ -25,10 +25,10 @@ bombilla.load()
 bombilla.execute()
 
 # you can pass argument if you want to execute a function on a specific object (e.g. train a model)
-bombilla.execute_method("train_function", "train", {"num_epochs": 10}) 
+bombilla.execute_method("trainer", "fit") 
 
 # you can get the object by key
-bombilla.find("resnet") # TODO: this is not implemented yet
+bombilla.find("resnet")
 ```
 
 
