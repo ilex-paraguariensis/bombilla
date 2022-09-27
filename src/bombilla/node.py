@@ -2,6 +2,7 @@ from re import S
 from typing import Optional, Any, Callable, Type, Union
 import json
 
+from . import utils
 import regex as re
 
 import ipdb
@@ -15,6 +16,7 @@ class Node:
 
     def __init__(self, args, parent=None, **kawrgs) -> None:
         self._original_keys = args.keys()
+
         if args is None:
             args = self._json()
         for key, val in args.items():
@@ -50,7 +52,7 @@ class Node:
                         dynamic_object = Node._key_value_map[key_name]
                         value[i] = dynamic_object
 
-        # return object
+                setattr(self, key, value)
 
     def post_object_creation(self):
         # ipdb.set_trace()
@@ -187,11 +189,12 @@ class NodeDict(Node):
         # ipdb.set_trace()
         assert type(args) == dict, "args must be a dict"
         super().__init__(args, **kawrgs)
+        self.node_key_dict = None
 
     def __load__(self, parent: Optional[Node] = None):
 
         # ipdb.set_trace()
-        node_key_dict = {}
+        self.node_key_dict = {}
         for key, val in self.__dict__.items():
 
             if not key.startswith("_") and key in self._original_keys:
@@ -199,18 +202,17 @@ class NodeDict(Node):
                 if isinstance(val, Node):
                     val.__load__(self)
                     setattr(self, key, val)
-                    node_key_dict[key] = val
+                    self.node_key_dict[key] = val
                 elif isinstance(val, list):
+                    nodes = []
                     for i, item in enumerate(val):
                         item = load_node(item, parent=self)
                         if isinstance(item, Node):
                             item.__load__(self)
+                            nodes.append(item)
                             val[i] = item
-
-        for key, val in node_key_dict.items():
-            setattr(self, f"{key}_node", val)
-
-        # self.load_dynamic_objects()
+                            self.node_key_dict[key] = nodes
+                    setattr(self, key, val)
 
         return self
 
@@ -234,11 +236,63 @@ class NodeDict(Node):
         return result
 
     def find(self, key_name):
-        for key, val in self.__dict__.items():
-            if key == key_name:
-                return getattr(self, f"{key}_node")
+        assert (
+            self.node_key_dict != None
+        ), "node_key_dict is None, cannot find before loading"
+        return self.node_key_dict[key_name]
 
-        return None
+
+
+    def to_dict(self):
+
+        if self.node_key_dict == None:
+            self.__load__()
+
+        def load_node(node):
+            if isinstance(node, Node):
+                return node.to_dict()
+            elif isinstance(node, list):
+                return [load_node(item) for item in node]
+            else:
+                return node
+
+        result = {}
+
+        for key, val in self.__dict__.items():
+            if not key.startswith("_") and key in self._original_keys:
+                if key in self.node_key_dict:
+                    val = load_node(self.node_key_dict[key])
+                    result[key] = val
+                else:
+                    result[key] = val
+
+        return result
+
+    def parse_params(self):
+
+        if self.node_key_dict == None:
+            self.__load__()
+
+        errors = []
+        params = {}
+
+        for key, val in self.__dict__.items():
+            if not key.startswith("_") and key in self._original_keys:
+                if key in self.node_key_dict:
+                    p, e = self.node_key_dict[key].parse_params()
+                    params[key] = p
+                    errors += [e]
+                elif isinstance(val, Node):
+                    p, e = val.parse_params()
+                    params[key] = p
+                    errors += [e]
+                else:
+                    params[key] = val
+
+        # remove None from errors
+        errors = [e for e in errors if e != None]
+
+        return params, errors
 
 
 class ObjectReference(Node):
@@ -257,15 +311,18 @@ class MethodCall(ObjectReference):
     reference_key: Optional[str] = None
     params: dict = {}
 
+    def __load__(self, parent=None, *args, **kwargs):
+
+        self.param_node = NodeDict(self.params, parent=self)
+        self.param_node.__load__(self)
+
     def __call__(self, parent: Optional[object] = None, *args, **kwargs):
 
         if self._py_object != None:
             return self._py_object
 
         # first create DictNode of params
-        dictNode = NodeDict(self.params)
-        dictNode.__load__(self)
-        params = dictNode()
+        params = self.param_node()
         # print("method call params", params)
 
         # then call the function
@@ -277,6 +334,18 @@ class MethodCall(ObjectReference):
 
     def __init__(self, args, parent: Optional[object] = None):
         super().__init__(args)
+
+    def to_dict(self):
+        return {
+            "reference_key": self.reference_key,
+            "function_call": self.function_call,
+            "params": self.param_node.to_dict(),
+        }
+
+    def parse_params(self):
+
+        params, errors = self.param_node.parse_params()
+        return params, errors
 
 
 # Methodcall for objects
@@ -292,6 +361,9 @@ class AnonMethodCall(Node):
     def __call__(self, *args, **kwargs):
         return self._node()
 
+    def to_dict(self):
+        return {"function": self.function, "params": self._node.to_dict()}
+
 
 class FunctionModuleCall(Node):
     function: str = ""
@@ -304,6 +376,21 @@ class FunctionModuleCall(Node):
         self._param_node = NodeDict(self.params)
         self._param_node.__load__(self)
         return self
+
+    def to_dict(self):
+        return {
+            "function": self.function,
+            "module": self.module,
+            "params": self._param_node.to_dict(),
+        }
+
+    def parse_params(self):
+
+        module = self.load_module()
+        function = getattr(module, self.function)
+
+        params, erros = utils.get_function_args(function, self._param_node)
+        return params, erros
 
     def __call__(self):
 
@@ -377,6 +464,20 @@ class Object(Node):
         self._py_object = module(**self.param_node())
         self.post_object_creation()
         return self._py_object
+
+    def to_dict(self):
+        return {
+            "module": self.module,
+            "class_name": self.class_name,
+            "params": self.param_node.to_dict(),
+        }
+
+    def parse_params(self):
+
+        module = self.load_module()
+
+        params, erros = utils.get_function_args(module, self.param_node)
+        return params, erros
 
     def __init__(self, args: Optional[dict], parent: Optional[object] = None):
         super().__init__(args, parent=parent)

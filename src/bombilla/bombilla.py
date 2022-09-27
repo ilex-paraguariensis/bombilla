@@ -1,6 +1,7 @@
 # Bambilla, API for bamiblla json format and python objects
 
 from .node import Node, NodeDict
+import ipdb
 
 
 class Bombilla:
@@ -19,6 +20,13 @@ class Bombilla:
 
     def load(self):
         self.root_node.__load__()
+
+        dicted = self.root_node.to_dict()
+
+        # print(dicted)
+
+        # pa, e = self.root_node.parse_params()
+        # ipdb.set_trace()
 
     def execute(self):
         self.root_node.__call__()
