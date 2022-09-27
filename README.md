@@ -5,9 +5,11 @@ Bombilla is a configuration format for describing python objects and executions 
 
 # Installation
 
-bombilla is available on pypi. You can install it with pip:
+bombilla can be installed locally:
 ```
-pip install bombilla
+git clone https://github.com/ilex-paraguariensis/bombilla
+cd bombilla
+pip install -e .
 ```
 
 # API
@@ -25,8 +27,8 @@ bombilla.load()
 bombilla.execute()
 
 # you can pass argument if you want to execute a function on a specific object (e.g. train a model)
-bombilla.execute_method("trainer", "fit") 
-
+bombilla.execute_method("trainer", "fit", *args, **kwargs)
+ 
 # you can get the object by key
 bombilla.find("resnet")
 ```
