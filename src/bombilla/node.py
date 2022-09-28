@@ -521,11 +521,11 @@ class FunctionModuleCall(Node):
         module = self.load_module()
         function = getattr(module, self.function)
 
-        params, erros = utils.get_function_args(function, self._param_node)
+        params, errors = utils.get_function_args(function, self._param_node)
 
         errors = [e for e in errors if e != None and e != []]
 
-        return params, erros
+        return params, errors
 
     def __call__(self):
 
