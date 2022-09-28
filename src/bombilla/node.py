@@ -73,11 +73,15 @@ class Node:
         ]
         module = None
         for module_name in module_list:
-            print(f"Trying to import {module_name}")
+            # print(f"Trying to import {module_name}")
             try:
                 module = __import__(module_name, fromlist=fromlist)
                 break
-            except ModuleNotFoundError:
+            except ModuleNotFoundError as err:
+                #print(f"{err.name=} {err.path=} {err.msg=}")
+                #print(f"{module_name=}")
+                if err.name != None and err.name.split(".")[0] != module_name.split(".")[0]:
+                    raise err
                 pass
 
         if module == None:
