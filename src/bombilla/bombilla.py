@@ -26,6 +26,8 @@ class Bombilla:
         self.root_node.__call__()
 
     def generate_full_dict(self):
+        self.root_node.__load__()
+
         return self.root_node.generate_full_dict()
 
     def execute_method(

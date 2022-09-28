@@ -12,7 +12,7 @@ def get_function_args(
 
     params = args.to_dict() if hasattr(args, "to_dict") else args
     default = {}
-    error = None
+    errors = []
 
     for param_name, param in inspect.signature(function).parameters.items():
 
@@ -34,10 +34,12 @@ def get_function_args(
         elif param.annotation is not param.empty:
             default[param_name] = f"Fix me! {param.annotation}"
             error = f"Missing parameter {param_name} for {object['module']}\nHint: {param.annotation}"
+            errors.append(error)
         else:
             default[param_name] = "Fix me!"
             error = f"Missing parameter {param_name} for {object['module']}\nHint: Add a default value or type annotation"
+            errors.append(error)
 
     params.update(default)
 
-    return params, error
+    return params, errors

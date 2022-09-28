@@ -99,9 +99,12 @@ class Node:
                 module = __import__(module_name, fromlist=fromlist)
                 break
             except ModuleNotFoundError as err:
-                #print(f"{err.name=} {err.path=} {err.msg=}")
-                #print(f"{module_name=}")
-                if err.name != None and err.name.split(".")[0] != module_name.split(".")[0]:
+                # print(f"{err.name=} {err.path=} {err.msg=}")
+                # print(f"{module_name=}")
+                if (
+                    err.name != None
+                    and err.name.split(".")[0] != module_name.split(".")[0]
+                ):
                     raise err
                 pass
 
@@ -298,9 +301,6 @@ class NodeDict(Node):
 
     def generate_full_dict(self):
 
-        import tensorflow
-
-        tensorflow.keras.optimizers.Adam
         if self._node_key_dict == None:
             self.__load__()
 
@@ -309,7 +309,7 @@ class NodeDict(Node):
         def load_node(node, errors=errors):
             if isinstance(node, Node):
                 n, e = node.generate_full_dict()
-                errors += [e]
+                errors += e
                 return n
             elif isinstance(node, list):
                 for i, item in enumerate(node):
@@ -339,6 +339,8 @@ class NodeDict(Node):
                 else:
                     result[key] = val
 
+        errors = [e for e in errors if e != None and e != []]
+
         return result, errors
 
     def parse_params(self):
@@ -356,17 +358,17 @@ class NodeDict(Node):
                 if key in self._node_key_dict:
                     p, e = self._node_key_dict[key].parse_params()
                     params[key] = p
-                    errors += [e]
+                    errors += e
                 elif isinstance(val, Node):
                     p, e = val.parse_params()
                     params[key] = p
-                    errors += [e]
+                    errors += e
 
                 else:
                     params[key] = val
 
         # remove None from errors
-        errors = [e for e in errors if e != None]
+        errors = [e for e in errors if e != None and e != []]
 
         return params, errors
 
@@ -422,6 +424,7 @@ class MethodCall(Node):
 
         # ipdb.set_trace()
         full_params, errors = self.param_node.parse_params()
+        errors = [e for e in errors if e != None and e != []]
         return {
             "reference_key": self.reference_key,
             "function_call": self.function_call,
@@ -434,6 +437,8 @@ class MethodCall(Node):
 
         # get the function args that are missing from the params
         params, errors = utils.get_function_args(function, self.param_node)
+        errors = [e for e in errors if e != None and e != []]
+
         return params, errors
 
 
@@ -499,15 +504,15 @@ class FunctionModuleCall(Node):
         if self.method_args != None:
             full_method_args, err = self.parse_method_args()
             result["method_args"] = full_method_args
-            errs += [err]
+            errs += err
 
         full_params, err = self.parse_params()
         result["params"] = full_params
 
-        errs += [err]
+        errs += err
 
         # remove None from errors
-        errs = [e for e in errs if e != None]
+        errs = [e for e in errs if e != None and e != []]
 
         return result, errs
 
@@ -517,6 +522,9 @@ class FunctionModuleCall(Node):
         function = getattr(module, self.function)
 
         params, erros = utils.get_function_args(function, self._param_node)
+
+        errors = [e for e in errors if e != None and e != []]
+
         return params, erros
 
     def __call__(self):
@@ -572,7 +580,7 @@ class FunctionModuleCall(Node):
             function = method.function
             method.__load__(self)
             full_args, errs = method.generate_full_dict()
-            errors += [errs]
+            errors += errs
 
             m = getattr(self._py_object, function)
             p, error = utils.get_function_args(m, full_args["params"])
@@ -583,10 +591,10 @@ class FunctionModuleCall(Node):
             }
 
             results += [gen_method]
-            errors += [error]
+            errors += error
 
         # remove None from errors
-        errors = [e for e in errors if e != None]
+        errors = [e for e in errors if e != None and e != []]
 
         return results, errors
 
@@ -657,7 +665,7 @@ class Object(Node):
         full_params, err = self.parse_params()
         result["params"] = full_params
 
-        errs += [err]
+        errs += err
 
         # remove None from errors
         errs = [e for e in errs if e != None]
@@ -671,9 +679,14 @@ class Object(Node):
         params, err = self.param_node.generate_full_dict()
 
         # ipdb.set_trace()
+        errors = err
 
         params, erros = utils.get_function_args(module, params)
-        return params, [err, erros]
+
+        errors += erros
+        errors = [e for e in errors if e != None and e != []]
+
+        return params, errors
 
     def __init__(self, args: Optional[dict], parent: Optional[object] = None):
         super().__init__(args, parent=parent)
@@ -708,7 +721,7 @@ class Object(Node):
             function = method.function
             method.__load__(self)
             full_args, errs = method.generate_full_dict()
-            errors += [errs]
+            errors += errs
 
             m = getattr(self._py_object, function)
             # ipdb.set_trace()
@@ -720,10 +733,10 @@ class Object(Node):
             }
 
             results += [gen_method]
-            errors += [error]
+            errors += error
 
         # remove None from errors
-        errors = [e for e in errors if e != None]
+        errors = [e for e in errors if e != None and e != []]
 
         return results, errors
 
