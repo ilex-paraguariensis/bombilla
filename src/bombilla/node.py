@@ -79,7 +79,6 @@ class Node:
             Node._key_value_map[self.object_key] = self._py_object
 
     def load_module(self):
-
         assert "module" in self.__dict__, "module not found"
 
         fromlist = [self.class_name] if hasattr(self, "class_name") else []
@@ -93,18 +92,24 @@ class Node:
             Node._root_module + "." + self.module,
             self.module,
         ]
-
-        for module in module_list:
+        module = None
+        for module_name in module_list:
+            # print(f"Trying to import {module_name}")
             try:
-                module = __import__(module, fromlist=fromlist)
+                module = __import__(module_name, fromlist=fromlist)
                 break
-            except ModuleNotFoundError:
+            except ModuleNotFoundError as err:
+                #print(f"{err.name=} {err.path=} {err.msg=}")
+                #print(f"{module_name=}")
+                if err.name != None and err.name.split(".")[0] != module_name.split(".")[0]:
+                    raise err
                 pass
 
         if module == None:
-            raise ModuleNotFoundError(f"module {module} not found")
+            raise ModuleNotFoundError(f'Module "{self.module}" not found')
 
         if "class_name" in self.__dict__:
+            # ipdb.set_trace()
             module = getattr(module, self.class_name)
         # if "class_name" in self:
         #     module = getattr(module, getattr[self, "class_name"])
