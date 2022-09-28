@@ -21,15 +21,12 @@ class Bombilla:
     def load(self):
         self.root_node.__load__()
 
-        dicted = self.root_node.to_dict()
-
-        # print(dicted)
-
-        # pa, e = self.root_node.parse_params()
-        # ipdb.set_trace()
-
     def execute(self):
+
         self.root_node.__call__()
+
+    def generate_full_dict(self):
+        return self.root_node.generate_full_dict()
 
     def execute_method(
         self, method_name: str, object_name: str = None, *args, **kwargs

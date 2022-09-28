@@ -1,3 +1,4 @@
+from distutils import errors
 from re import S
 from typing import Optional, Any, Callable, Type, Union
 import json
@@ -16,6 +17,9 @@ class Node:
 
     def __init__(self, args, parent=None, **kawrgs) -> None:
         self._original_keys = args.keys()
+        self._original_args = dict(args)
+        self._uno_key_value_map = {}
+        self._parent = parent
 
         if args is None:
             args = self._json()
@@ -36,23 +40,38 @@ class Node:
 
     def load_dynamic_objects(self):
         for key, value in self.__dict__.items():
-            if type(value) == str and re.search(r"{.*}", value):
+            if (
+                type(value) == str
+                and key in self._original_keys
+                and re.search(r"{.*}", value)
+            ):
                 # get the key name
                 key_name = re.search(r"{.*}", value).group(0)[1:-1]
 
                 dynamic_object = Node._key_value_map[key_name]
+                self._uno_key_value_map[key] = value
+
                 setattr(self, key, dynamic_object)
 
             if type(value) == list:
+                set = False
                 for i, item in enumerate(value):
-                    if type(item) == str and re.search(r"{.*}", item):
+                    if (
+                        type(item) == str
+                        and key in self._original_keys
+                        and re.search(r"{.*}", item)
+                    ):
                         # get the key name
                         key_name = re.search(r"{.*}", item).group(0)[1:-1]
 
                         dynamic_object = Node._key_value_map[key_name]
                         value[i] = dynamic_object
+                        set = True
 
-                setattr(self, key, value)
+                if set:
+
+                    self._uno_key_value_map[key] = value
+                    setattr(self, key, value)
 
     def post_object_creation(self):
         # ipdb.set_trace()
@@ -189,12 +208,12 @@ class NodeDict(Node):
         # ipdb.set_trace()
         assert type(args) == dict, "args must be a dict"
         super().__init__(args, **kawrgs)
-        self.node_key_dict = None
+        self._node_key_dict = {}
 
     def __load__(self, parent: Optional[Node] = None):
 
         # ipdb.set_trace()
-        self.node_key_dict = {}
+        # self._parent = parent
         for key, val in self.__dict__.items():
 
             if not key.startswith("_") and key in self._original_keys:
@@ -202,7 +221,8 @@ class NodeDict(Node):
                 if isinstance(val, Node):
                     val.__load__(self)
                     setattr(self, key, val)
-                    self.node_key_dict[key] = val
+                    self._node_key_dict[key] = val
+
                 elif isinstance(val, list):
                     nodes = []
                     for i, item in enumerate(val):
@@ -211,7 +231,7 @@ class NodeDict(Node):
                             item.__load__(self)
                             nodes.append(item)
                             val[i] = item
-                            self.node_key_dict[key] = nodes
+                            self._node_key_dict[key] = nodes
                     setattr(self, key, val)
 
         return self
@@ -237,15 +257,13 @@ class NodeDict(Node):
 
     def find(self, key_name):
         assert (
-            self.node_key_dict != None
+            self._node_key_dict != None
         ), "node_key_dict is None, cannot find before loading"
-        return self.node_key_dict[key_name]
-
-
+        return self._node_key_dict[key_name]
 
     def to_dict(self):
 
-        if self.node_key_dict == None:
+        if self._node_key_dict == None:
             self.__load__()
 
         def load_node(node):
@@ -260,32 +278,85 @@ class NodeDict(Node):
 
         for key, val in self.__dict__.items():
             if not key.startswith("_") and key in self._original_keys:
-                if key in self.node_key_dict:
-                    val = load_node(self.node_key_dict[key])
+                if key in self._node_key_dict:
+                    val = load_node(self._node_key_dict[key])
                     result[key] = val
+                elif key in self._uno_key_value_map:
+                    result[key] = self._uno_key_value_map[key]
+
+                elif type(val) == object:
+                    result[key] = self._original_args[key]
                 else:
                     result[key] = val
 
         return result
 
+    def generate_full_dict(self):
+
+        import tensorflow
+
+        tensorflow.keras.optimizers.Adam
+        if self._node_key_dict == None:
+            self.__load__()
+
+        errors = []
+
+        def load_node(node, errors=errors):
+            if isinstance(node, Node):
+                n, e = node.generate_full_dict()
+                errors += [e]
+                return n
+            elif isinstance(node, list):
+                for i, item in enumerate(node):
+                    if isinstance(item, Node):
+                        n, e = item.generate_full_dict()
+                        errors += [e]
+                        node[i] = n
+
+                return node
+
+            else:
+                return node
+
+        result = {}
+
+        for key, val in self.__dict__.items():
+            if not key.startswith("_") and key in self._original_keys:
+
+                if key in self._uno_key_value_map:
+                    result[key] = self._uno_key_value_map[key]
+                elif key in self._node_key_dict:
+                    val = load_node(self._node_key_dict[key])
+                    result[key] = val
+
+                elif type(val) == list or type(val) == Node:
+                    result[key] = load_node(val)
+                else:
+                    result[key] = val
+
+        return result, errors
+
     def parse_params(self):
 
-        if self.node_key_dict == None:
+        if self._node_key_dict == None:
             self.__load__()
 
         errors = []
         params = {}
 
         for key, val in self.__dict__.items():
+
             if not key.startswith("_") and key in self._original_keys:
-                if key in self.node_key_dict:
-                    p, e = self.node_key_dict[key].parse_params()
+
+                if key in self._node_key_dict:
+                    p, e = self._node_key_dict[key].parse_params()
                     params[key] = p
                     errors += [e]
                 elif isinstance(val, Node):
                     p, e = val.parse_params()
                     params[key] = p
                     errors += [e]
+
                 else:
                     params[key] = val
 
@@ -306,7 +377,7 @@ class ObjectReference(Node):
         return Node._key_value_map[self.reference_key]
 
 
-class MethodCall(ObjectReference):
+class MethodCall(Node):
     function_call: str = ""
     reference_key: Optional[str] = None
     params: dict = {}
@@ -315,12 +386,12 @@ class MethodCall(ObjectReference):
 
         self.param_node = NodeDict(self.params, parent=self)
         self.param_node.__load__(self)
+        return self
 
     def __call__(self, parent: Optional[object] = None, *args, **kwargs):
 
         if self._py_object != None:
             return self._py_object
-
         # first create DictNode of params
         params = self.param_node()
         # print("method call params", params)
@@ -342,20 +413,41 @@ class MethodCall(ObjectReference):
             "params": self.param_node.to_dict(),
         }
 
+    def generate_full_dict(self):
+
+        # ipdb.set_trace()
+        full_params, errors = self.param_node.parse_params()
+        return {
+            "reference_key": self.reference_key,
+            "function_call": self.function_call,
+            "params": full_params,
+        }, errors
+
     def parse_params(self):
 
-        params, errors = self.param_node.parse_params()
+        function = getattr(Node._key_value_map[self.reference_key], self.function_call)
+
+        # get the function args that are missing from the params
+        params, errors = utils.get_function_args(function, self.param_node)
         return params, errors
 
 
 # Methodcall for objects
-class AnonMethodCall(Node):
+class ObjectMethodCall(Node):
     function: str = ""
     params: dict = {}
 
+    def __init__(self, args, parent=None, **kawrgs) -> None:
+        super().__init__(args, parent, **kawrgs)
+        self._node = None
+
     def __load__(self, parent=None) -> object:
 
-        self._node = NodeDict(self.params)
+        if self._node == None:
+            self._node = NodeDict(self.params, parent=self)
+            self._node.__load__(self)
+            return self
+        # self._node = NodeDict(self.params)
         return self
 
     def __call__(self, *args, **kwargs):
@@ -364,17 +456,26 @@ class AnonMethodCall(Node):
     def to_dict(self):
         return {"function": self.function, "params": self._node.to_dict()}
 
+    def generate_full_dict(self):
+        full_params, errors = self._node.generate_full_dict()
+        return {"function": self.function, "params": full_params}, errors
+
 
 class FunctionModuleCall(Node):
     function: str = ""
     module: str = ""
     params: dict = {}
-    method_args: Optional[list[AnonMethodCall]] = None
+    method_args: Optional[list[ObjectMethodCall]] = None
 
     def __load__(self, parent=None) -> object:
 
         self._param_node = NodeDict(self.params)
         self._param_node.__load__(self)
+        self._method_args_nodes = (
+            [ObjectMethodCall(m, self) for m in self.method_args]
+            if self.method_args
+            else []
+        )
         return self
 
     def to_dict(self):
@@ -383,6 +484,27 @@ class FunctionModuleCall(Node):
             "module": self.module,
             "params": self._param_node.to_dict(),
         }
+
+    def generate_full_dict(self):
+        result = {
+            "function": self.function,
+            "module": self.module,
+        }
+        errs = []
+        if self.method_args != None:
+            full_method_args, err = self.parse_method_args()
+            result["method_args"] = full_method_args
+            errs += [err]
+
+        full_params, err = self.parse_params()
+        result["params"] = full_params
+
+        errs += [err]
+
+        # remove None from errors
+        errs = [e for e in errs if e != None]
+
+        return result, errs
 
     def parse_params(self):
 
@@ -414,16 +536,54 @@ class FunctionModuleCall(Node):
         assert method_name in method_arg_names
 
         idx = method_arg_names.index(method_name)
-        method_args = self.method_args[idx]["params"]
+        method_args = self._method_args_nodes[idx]
+        # ipdb.set_trace()
 
-        method_args = load_node(method_args, parent=self)
+        # method_args =  #load_node(method_args, parent=self)
         # ipdb.set_trace()
         method_args.__load__(self)
         method_args = method_args()
         f, p = flatten_nameless_params(method_args)
 
         method = getattr(self._py_object, method_name)
-        return method(*args, *f, **p, **kwargs)
+
+        if f:
+            return method(*args, *f, **p, **kwargs)
+
+        return method(*args, **p, **kwargs)
+
+    def parse_method_args(self):
+
+        assert self._py_object != None, "Object not created yet"
+        assert self.method_args != None, "No method args"
+
+        errors = []
+        params = {}
+        results = []
+
+        for method in self._method_args_nodes:
+            # ipdb.set_trace()
+
+            function = method.function
+            method.__load__(self)
+            full_args, errs = method.generate_full_dict()
+            errors += [errs]
+
+            m = getattr(self._py_object, function)
+            p, error = utils.get_function_args(m, full_args["params"])
+
+            gen_method = {
+                "function": function,
+                "params": p,
+            }
+
+            results += [gen_method]
+            errors += [error]
+
+        # remove None from errors
+        errors = [e for e in errors if e != None]
+
+        return results, errors
 
 
 def flatten_nameless_params(params: dict) -> dict:
@@ -441,16 +601,22 @@ class Object(Node):
     module: str = ""
     class_name: str = ""
     params: dict = {}  # param is actualy a dictnode
-    method_args: Optional[list[AnonMethodCall]] = None
+    method_args: Optional[list[ObjectMethodCall]] = None
 
     def __load__(self, parent: Optional[object] = None) -> object:
 
         if self._py_object != None:
-            return self._py_object
+            return self
 
         self.param_node = NodeDict(self.params)
 
         self.param_node.__load__()
+
+        self._method_args_nodes = (
+            [ObjectMethodCall(m, self) for m in self.method_args]
+            if self.method_args
+            else []
+        )
 
         return self
 
@@ -472,12 +638,37 @@ class Object(Node):
             "params": self.param_node.to_dict(),
         }
 
+    def generate_full_dict(self):
+        result = {
+            "module": self.module,
+            "class_name": self.class_name,
+        }
+        errs = []
+        if self.method_args != None:
+            full_method_args, err = self.parse_method_args()
+            result["method_args"] = full_method_args
+            errs += [err]
+
+        full_params, err = self.parse_params()
+        result["params"] = full_params
+
+        errs += [err]
+
+        # remove None from errors
+        errs = [e for e in errs if e != None]
+
+        return result, errs
+
     def parse_params(self):
 
         module = self.load_module()
 
-        params, erros = utils.get_function_args(module, self.param_node)
-        return params, erros
+        params, err = self.param_node.generate_full_dict()
+
+        # ipdb.set_trace()
+
+        params, erros = utils.get_function_args(module, params)
+        return params, [err, erros]
 
     def __init__(self, args: Optional[dict], parent: Optional[object] = None):
         super().__init__(args, parent=parent)
@@ -497,6 +688,40 @@ class Object(Node):
         method = getattr(self._py_object, method_name)
         return method(*args, **method_args, **kwargs)
 
+    def parse_method_args(self):
+
+        # assert self._py_object != None, "Object not created yet"
+        assert self.method_args != None, "No method args"
+
+        errors = []
+        params = {}
+        results = []
+
+        for method in self._method_args_nodes:
+            # ipdb.set_trace()
+
+            function = method.function
+            method.__load__(self)
+            full_args, errs = method.generate_full_dict()
+            errors += [errs]
+
+            m = getattr(self._py_object, function)
+            # ipdb.set_trace()
+            p, error = utils.get_function_args(m, full_args["params"])
+
+            gen_method = {
+                "function": function,
+                "params": p,
+            }
+
+            results += [gen_method]
+            errors += [error]
+
+        # remove None from errors
+        errors = [e for e in errors if e != None]
+
+        return results, errors
+
 
 class AnnonymousObject(Node):
     def __init__(self, args: Optional[dict] = None) -> None:
@@ -508,12 +733,12 @@ node_types: list[Type] = [
     Object,
     MethodCall,
     FunctionModuleCall,
+    ObjectMethodCall,
     ObjectReference,
-    AnonMethodCall,
     NodeDict,
 ]
 SyntaxNode = Union[
-    Object, FunctionModuleCall, MethodCall, ObjectReference, AnonMethodCall, NodeDict
+    Object, FunctionModuleCall, MethodCall, ObjectReference, ObjectMethodCall, NodeDict
 ]
 
 

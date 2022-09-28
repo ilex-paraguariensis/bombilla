@@ -10,9 +10,7 @@ def get_function_args(
     generate_none: bool = False,
 ):
 
-    # ipdb.set_trace()
-
-    params = args.to_dict() if args else {}
+    params = args.to_dict() if hasattr(args, "to_dict") else args
     default = {}
     error = None
 
