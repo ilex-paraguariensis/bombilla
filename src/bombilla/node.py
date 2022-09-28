@@ -81,7 +81,7 @@ class Node:
                 pass
 
         if module == None:
-            raise ModuleNotFoundError(f"module {module} not found")
+            raise ModuleNotFoundError(f'Module "{self.module}" not found')
 
         if "class_name" in self.__dict__:
             # ipdb.set_trace()
