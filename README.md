@@ -1,15 +1,14 @@
 
 # What is Bombilla?
 
-Bombilla is a configuration format for describing python objects and executions in plain json. Bombilla is compatible with any python framework, e.g pytorch lightning, keras and jax. You can use bombilla to define an experiment with a json file, and then execute it.
+Bombilla is a configuration format for describing python objects and executions in plain json. Bombilla is compatible with any python framework, e.g pytorch lightning, keras and jax. You can use bombilla to define an experiment with a json file, and then execute it. 
 
 # Installation
 
-bombilla can be installed locally:
-```
-git clone https://github.com/ilex-paraguariensis/bombilla
-cd bombilla
-pip install -e .
+bombilla can be installed with pip:
+
+```bash
+pip install bomba
 ```
 
 # API
@@ -36,7 +35,10 @@ bombilla.find("resnet")
 
 ## Object descriptor format
 
-An object descriptor is a dictionary that describes a python object. The dictionary has the following keys:
+An object descriptor is a dictionary that describes python objects and executions. Bombilla supports several types of object descriptors, e.g. module, function, class, object, method, etc. 
+
+A class object descriptor is a dictionary with the following keys:
+ The dictionary has the following keys:
 * `module`: the python module where the object is defined
 * `class_name`: the name of the class
 * `object_key`: the key of the object for dynamic referencing
