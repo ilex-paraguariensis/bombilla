@@ -37,7 +37,6 @@ bombilla.find("resnet")
 
 An object descriptor is a dictionary that describes python objects and executions.
 The dictionary can contain the following keys:
- The dictionary has the following keys:
 * `module`: the python module where the object is defined
 * `class_name`: the name of the class
 * `object_key`: the key of the object for dynamic referencing
