@@ -7,7 +7,7 @@ setup(
     author_email="yerba.mate.dl@proton.me",
     url="https://github.com/ilex-paraguariensis/bombilla",
     python_requires=">=3.9",
-    version="1.1.11",
+    version="1.1.112",
     packages=find_packages("packages", exclude=["tests", "examples"]),
     include_package_data=True,
     package_dir={"": "packages/"},

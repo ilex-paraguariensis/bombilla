@@ -35,14 +35,18 @@ bombilla.find("resnet")
 
 ## Object descriptor format
 
-An object descriptor is a dictionary that describes python objects and executions. Bombilla supports several types of object descriptors, e.g. module, function, class, object, method, etc. 
-
-A class object descriptor is a dictionary with the following keys:
+An object descriptor is a dictionary that describes python objects and executions. An object descriptor can be used to create an object, or to execute a function on an object.
+A object descriptor is a dictionary with possibly following keys:
  The dictionary has the following keys:
 * `module`: the python module where the object is defined
 * `class_name`: the name of the class
 * `object_key`: the key of the object for dynamic referencing
 * `params`: the parameters of the object
+* `function`: the function to be executed
+* `method_args`: arguments for calling a specific method on an object
+
+**Note that all the arguments are directly passed to the object constructor, so you can use any argument that is accepted by the function's singnature.**
+
 
 For example, here an object is described from `torchvision.models` python module, and used to load a pre-trained resnet.
 
