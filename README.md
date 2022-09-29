@@ -35,13 +35,13 @@ bombilla.find("resnet")
 
 ## Object descriptor format
 
-An object descriptor is a dictionary that describes python objects and executions. An object descriptor can be used to create an object, or to execute a function on an object.
-A object descriptor is a dictionary with possibly following keys:
+An object descriptor is a dictionary that describes python objects and executions.
+The dictionary can contain the following keys:
  The dictionary has the following keys:
 * `module`: the python module where the object is defined
 * `class_name`: the name of the class
 * `object_key`: the key of the object for dynamic referencing
-* `params`: the parameters of the object
+* `params`: the parameters for creating the object
 * `function`: the function to be executed
 * `method_args`: arguments for calling a specific method on an object
 
