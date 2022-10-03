@@ -3,6 +3,24 @@ import inspect
 import ipdb
 
 
+def parse_default_param(param):
+
+    if param is object:
+        ipdb.set_trace()
+
+    # if param is a class, return the class name
+    if inspect.isclass(param):
+        return {
+            "class_type": param.__name__,
+            "module": param.__module__,
+        }
+
+    if param is list:
+        return [parse_default_param(p) for p in param]
+
+    return param
+
+
 def get_function_args(
     function: Callable,
     args={},
@@ -15,8 +33,8 @@ def get_function_args(
     errors = []
 
     for param_name, param in inspect.signature(function).parameters.items():
-
         # only add parameters that are not self or exist in the params
+
         if param_name in params or param_name == "self":
             continue
 
@@ -27,18 +45,23 @@ def get_function_args(
         if param.default is not param.empty:
             # ignore None values
             if param.default != None and generate_defaults:
-                default[param_name] = param.default
+                default[param_name] = parse_default_param(param.default)
+
+                # check if default is type class, or object
+
             elif generate_none:
                 default[param_name] = None
 
         elif param.annotation is not param.empty:
             default[param_name] = f"Fix me! {param.annotation}"
-            error = f"Missing parameter {param_name} for {object['module']}\nHint: {param.annotation}"
+            error = f"Missing parameter {param_name}.  Hint: {param.annotation}"
             errors.append(error)
         else:
             default[param_name] = "Fix me!"
-            error = f"Missing parameter {param_name} for {object['module']}\nHint: Add a default value or type annotation"
+            error = f"Missing parameter {param_name}. Hint: Add a default value or type annotation"
             errors.append(error)
+
+        #
 
     params.update(default)
 
