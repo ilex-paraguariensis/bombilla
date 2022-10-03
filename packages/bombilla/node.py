@@ -87,6 +87,9 @@ class Node:
         if hasattr(self, "function") and not hasattr(self, "class_name"):
             fromlist = [self.function]
 
+        if hasattr(self, "class_type"):
+            fromlist = [self.class_type]
+
         module_list = [
             Node._base_module + "." + self.module,
             Node._root_module + "." + self.module,
@@ -747,16 +750,46 @@ class AnnonymousObject(Node):
         setattr(self, "", "")
 
 
+class ClassTypeAnnotation(Node):
+    module: str = ""
+    class_type: str = ""
+
+    def __load__(self, parent: Optional[Node] = None) -> object:
+        # ipdb.set_trace()
+        self._module = self.load_module()
+        return self
+
+    def __call__(self, *args, **kwargs):
+
+        return getattr(self._module, self.class_type)
+
+    def to_dict(self):
+        return {
+            "module": self.module,
+            "class_type": self.class_type,
+        }
+
+    def generate_full_dict(self):
+        return self.to_dict(), []
+
+
 node_types: list[Type] = [
     Object,
     MethodCall,
     FunctionModuleCall,
     ObjectMethodCall,
     ObjectReference,
+    ClassTypeAnnotation,
     NodeDict,
 ]
 SyntaxNode = Union[
-    Object, FunctionModuleCall, MethodCall, ObjectReference, ObjectMethodCall, NodeDict
+    Object,
+    FunctionModuleCall,
+    MethodCall,
+    ObjectReference,
+    ObjectMethodCall,
+    ClassTypeAnnotation,
+    NodeDict,
 ]
 
 
