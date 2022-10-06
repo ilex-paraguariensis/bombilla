@@ -5,8 +5,8 @@ import ipdb
 
 def parse_default_param(param):
 
-    if param is object:
-        ipdb.set_trace()
+    # if param is object:
+    #     ipdb.set_trace()
 
     # if param is a class, return the class name
     if inspect.isclass(param):

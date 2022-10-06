@@ -33,8 +33,7 @@ class Node:
         pass
 
     @staticmethod
-    def set_config(base_module: str, root_module: str, key_value_map: dict):
-        Node._base_module = base_module
+    def set_config(root_module: str, key_value_map: dict):
         Node._root_module = root_module
         Node._key_value_map = key_value_map
 
@@ -91,7 +90,7 @@ class Node:
             fromlist = [self.class_type]
 
         module_list = [
-            Node._base_module + "." + self.module,
+            # Node._base_module + "." + self.module,
             Node._root_module + "." + self.module,
             self.module,
         ]
