@@ -567,6 +567,10 @@ class FunctionModuleCall(Node):
 
         return method(*args, **p, **kwargs)
 
+    def has_method(self, method_name: str):
+        method_arg_names = [arg["function"] for arg in self.method_args]
+        return method_name in method_arg_names
+
     def parse_method_args(self):
 
         assert self._py_object != None, "Object not created yet"
@@ -707,6 +711,10 @@ class Object(Node):
 
         method = getattr(self._py_object, method_name)
         return method(*args, **method_args, **kwargs)
+
+    def has_method(self, method_name: str):
+        method_arg_names = [arg["function"] for arg in self.method_args]
+        return method_name in method_arg_names
 
     def parse_method_args(self):
 
