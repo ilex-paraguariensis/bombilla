@@ -40,10 +40,22 @@ class Bombilla(dict):
 
     def has_method(self, method_name: str, object_name: str):
         try:
-
             node = self.root_node.find(object_name)
             return node.has_method(method_name)
         except:
+            return False
+
+    def call_all_methods(self, object_key: str):
+        try:
+            node = self.root_node.find(object_key)
+            node.call_all_methods()
+        except:
+            try:
+                node = self.root_node[object_key]
+                node.call_all_methods()
+            except:
+                return False
+
             return False
 
     def find(self, object_name: str):

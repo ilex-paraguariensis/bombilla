@@ -473,7 +473,76 @@ class ObjectMethodCall(Node):
         return {"function": self.function, "params": full_params}, errors
 
 
-class FunctionModuleCall(Node):
+# A node that has method_args, could be a function or class
+class MethodArgNode(Node):
+    module: str = ""
+    params: dict = {}
+    method_args: Optional[list[ObjectMethodCall]] = None
+
+    def call_method(self, method_name: str, *args, **kwargs):
+
+        method_arg_names = [arg["function"] for arg in self.method_args]
+        assert method_name in method_arg_names
+
+        idx = method_arg_names.index(method_name)
+        method_args = self.method_args[idx]["params"]
+
+        method_args = load_node(method_args, parent=self)
+        method_args.__load__(self)
+        method_args = method_args()
+        f, p = flatten_nameless_params(method_args)
+
+        method = getattr(self._py_object, method_name)
+
+        if f:
+            return method(*args, *f, **p, **kwargs)
+
+        return method(*args, **p, **kwargs)
+
+    def has_method(self, method_name: str):
+        method_arg_names = [arg["function"] for arg in self.method_args]
+        return method_name in method_arg_names
+
+    def call_all_methods(self):
+
+        for method_arg in self.method_args:
+            self.call_method(method_arg["function"])
+
+    def parse_method_args(self):
+
+        # assert self._py_object != None, "Object not created yet"
+        assert self.method_args != None, "No method args"
+
+        errors = []
+        params = {}
+        results = []
+
+        for method in self._method_args_nodes:
+            # ipdb.set_trace()
+
+            function = method.function
+            method.__load__(self)
+            full_args, errs = method.generate_full_dict()
+            errors += errs
+
+            m = getattr(self._py_object, function)
+            # ipdb.set_trace()
+            p, error = utils.get_function_args(m, full_args["params"])
+
+            gen_method = {
+                "function": function,
+                "params": p,
+            }
+
+            results += [gen_method]
+            errors += error
+
+        # remove None from errors
+        errors = [e for e in errors if e != None and e != []]
+
+        return results, errors
+
+class FunctionModuleCall(MethodArgNode):
     function: str = ""
     module: str = ""
     params: dict = {}
@@ -546,64 +615,6 @@ class FunctionModuleCall(Node):
         self.post_object_creation()
         return self._py_object
 
-    def call_method(self, method_name: str, *args, **kwargs):
-        method_arg_names = [arg["function"] for arg in self.method_args]
-        assert method_name in method_arg_names
-
-        idx = method_arg_names.index(method_name)
-        method_args = self._method_args_nodes[idx]
-        # ipdb.set_trace()
-
-        # method_args =  #load_node(method_args, parent=self)
-        # ipdb.set_trace()
-        method_args.__load__(self)
-        method_args = method_args()
-        f, p = flatten_nameless_params(method_args)
-
-        method = getattr(self._py_object, method_name)
-
-        if f:
-            return method(*args, *f, **p, **kwargs)
-
-        return method(*args, **p, **kwargs)
-
-    def has_method(self, method_name: str):
-        method_arg_names = [arg["function"] for arg in self.method_args]
-        return method_name in method_arg_names
-
-    def parse_method_args(self):
-
-        assert self._py_object != None, "Object not created yet"
-        assert self.method_args != None, "No method args"
-
-        errors = []
-        params = {}
-        results = []
-
-        for method in self._method_args_nodes:
-            # ipdb.set_trace()
-
-            function = method.function
-            method.__load__(self)
-            full_args, errs = method.generate_full_dict()
-            errors += errs
-
-            m = getattr(self._py_object, function)
-            p, error = utils.get_function_args(m, full_args["params"])
-
-            gen_method = {
-                "function": function,
-                "params": p,
-            }
-
-            results += [gen_method]
-            errors += error
-
-        # remove None from errors
-        errors = [e for e in errors if e != None and e != []]
-
-        return results, errors
-
 
 def flatten_nameless_params(params: dict) -> dict:
 
@@ -616,7 +627,9 @@ def flatten_nameless_params(params: dict) -> dict:
     return flats, params
 
 
-class Object(Node):
+
+
+class Object(MethodArgNode):
     module: str = ""
     class_name: str = ""
     params: dict = {}  # param is actualy a dictnode
@@ -645,6 +658,7 @@ class Object(Node):
             return self._py_object
 
         module = self.load_module()
+
 
         self._py_object = module(**self.param_node())
         self.post_object_creation()
@@ -696,59 +710,6 @@ class Object(Node):
 
     def __init__(self, args: Optional[dict], parent: Optional[object] = None):
         super().__init__(args, parent=parent)
-
-    def call_method(self, method_name: str, *args, **kwargs):
-
-        method_arg_names = [arg["function"] for arg in self.method_args]
-        assert method_name in method_arg_names
-
-        idx = method_arg_names.index(method_name)
-        method_args = self.method_args[idx]["params"]
-
-        method_args = load_node(method_args, parent=self)
-        method_args.__load__(self)
-        method_args = method_args()
-
-        method = getattr(self._py_object, method_name)
-        return method(*args, **method_args, **kwargs)
-
-    def has_method(self, method_name: str):
-        method_arg_names = [arg["function"] for arg in self.method_args]
-        return method_name in method_arg_names
-
-    def parse_method_args(self):
-
-        # assert self._py_object != None, "Object not created yet"
-        assert self.method_args != None, "No method args"
-
-        errors = []
-        params = {}
-        results = []
-
-        for method in self._method_args_nodes:
-            # ipdb.set_trace()
-
-            function = method.function
-            method.__load__(self)
-            full_args, errs = method.generate_full_dict()
-            errors += errs
-
-            m = getattr(self._py_object, function)
-            # ipdb.set_trace()
-            p, error = utils.get_function_args(m, full_args["params"])
-
-            gen_method = {
-                "function": function,
-                "params": p,
-            }
-
-            results += [gen_method]
-            errors += error
-
-        # remove None from errors
-        errors = [e for e in errors if e != None and e != []]
-
-        return results, errors
 
 
 class AnnonymousObject(Node):
