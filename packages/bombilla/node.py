@@ -2,6 +2,7 @@ from distutils import errors
 from re import S
 from typing import Optional, Any, Callable, Type, Union
 import json
+from .utils.metadata import generate_metadata
 
 from . import utils
 import regex as re
@@ -76,6 +77,13 @@ class Node:
         # ipdb.set_trace()
         if "object_key" in self._original_keys:
             Node._key_value_map[self.object_key] = self._py_object
+
+        self.generate_metadata(self._py_object, self.to_dict())
+
+    def generate_metadata(self, obj, metadata):
+
+        generate_metadata(obj, metadata, Node._root_module)
+        # ipdb.set_trace()
 
     def load_module(self):
         assert "module" in self.__dict__, "module not found"
@@ -542,6 +550,7 @@ class MethodArgNode(Node):
 
         return results, errors
 
+
 class FunctionModuleCall(MethodArgNode):
     function: str = ""
     module: str = ""
@@ -627,8 +636,6 @@ def flatten_nameless_params(params: dict) -> dict:
     return flats, params
 
 
-
-
 class Object(MethodArgNode):
     module: str = ""
     class_name: str = ""
@@ -658,7 +665,6 @@ class Object(MethodArgNode):
             return self._py_object
 
         module = self.load_module()
-
 
         self._py_object = module(**self.param_node())
         self.post_object_creation()
