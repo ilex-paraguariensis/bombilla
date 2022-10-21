@@ -99,7 +99,7 @@ def __generate_metadata(obj, metadata):
             # generate metadata for each element in the tuple
             metas = []
             for i, element in enumerate(obj):
-                _meta = generate_metadata(element, metadata)
+                _meta = __generate_metadata(element, metadata)
                 metas.append(_meta)
 
             meta["return"] = metas
@@ -108,7 +108,7 @@ def __generate_metadata(obj, metadata):
             # generate metadata for each element in the list
             metas = []
             for i, element in enumerate(obj):
-                _meta = generate_metadata(element, metadata)
+                _meta = __generate_metadata(element, metadata)
                 metas.append(_meta)
             meta["return"] = metas
 
