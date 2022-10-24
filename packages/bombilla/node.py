@@ -533,17 +533,17 @@ class MethodArgNode(Node):
             full_args, errs = method.generate_full_dict()
             errors += errs
 
-            m = getattr(self._py_object, function)
-            # ipdb.set_trace()
-            p, error = utils.get_function_args(m, full_args["params"])
-
             gen_method = {
                 "function": function,
-                "params": p,
             }
 
+            if self._py_object:
+                m = getattr(self._py_object, function)
+                p, error = utils.get_function_args(m, full_args["params"])
+                errors += error
+                gen_method["params"] = p
+
             results += [gen_method]
-            errors += error
 
         # remove None from errors
         errors = [e for e in errors if e != None and e != []]
@@ -580,6 +580,10 @@ class FunctionModuleCall(MethodArgNode):
             "function": self.function,
             "module": self.module,
         }
+
+        if hasattr(self, "object_key") and self.object_key != "":
+            result["object_key"] = self.object_key
+
         errs = []
         if self.method_args != None:
             full_method_args, err = self.parse_method_args()
@@ -682,6 +686,14 @@ class Object(MethodArgNode):
             "module": self.module,
             "class_name": self.class_name,
         }
+
+        if (
+            hasattr(self, "object_key")
+            and self.object_key != ""
+            and self.object_key != None
+        ):
+            result["object_key"] = self.object_key
+
         errs = []
         if self.method_args != None:
             full_method_args, err = self.parse_method_args()

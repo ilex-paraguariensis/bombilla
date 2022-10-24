@@ -3,6 +3,8 @@ import json
 import os
 
 
+
+
 def generate_metadata(obj, metadata, root_module=""):
 
     return_meta = __generate_metadata(obj, metadata)
