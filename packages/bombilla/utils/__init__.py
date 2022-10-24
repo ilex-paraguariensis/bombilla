@@ -1,1 +1,1 @@
-from .utils import get_function_args
+from .utils import get_function_args, parse_docs

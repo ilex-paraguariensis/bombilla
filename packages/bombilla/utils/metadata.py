@@ -3,8 +3,6 @@ import json
 import os
 
 
-
-
 def generate_metadata(obj, metadata, root_module=""):
 
     return_meta = __generate_metadata(obj, metadata)
@@ -117,61 +115,11 @@ def __generate_metadata(obj, metadata):
     except:
         pass
 
-    # ipdb.set_trace()
-
     return meta
 
 
 def try_shape(obj):
-    shape = try_numpy_shape(obj)
-    if shape is not None:
-        return shape
-
-    shape = try_torch_shape(obj)
-    if shape is not None:
-        return shape
-
-    shape = try_tf_shape(obj)
-    if shape is not None:
-        return shape
-
-    return None
-
-
-def try_numpy_shape(obj):
     try:
-        import numpy
-
-        if type(obj) == numpy.ndarray:
-            return obj.shape
-
+        return obj.shape
     except:
-        pass
-
-    return None
-
-
-def try_torch_shape(obj):
-    try:
-        import torch
-
-        if type(obj) == torch.Tensor:
-            return obj.shape
-
-    except:
-        pass
-
-    return
-
-
-def try_tf_shape(obj):
-    try:
-        import tensorflow
-
-        if type(obj) == tensorflow.Tensor:
-            return obj.shape
-
-    except:
-        pass
-
-    return None
+        return None

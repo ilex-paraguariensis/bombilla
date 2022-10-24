@@ -15,6 +15,7 @@ SimpleType = Union[str, int, float, bool, None]
 class Node:
     object_key: Optional[str] = None
     _py_object: Optional[object] = None
+    _docs: Optional[dict] = None
 
     def __init__(self, args, parent=None, **kawrgs) -> None:
         self._original_keys = args.keys()
@@ -435,11 +436,17 @@ class MethodCall(Node):
         # ipdb.set_trace()
         full_params, errors = self.param_node.parse_params()
         errors = [e for e in errors if e != None and e != []]
-        return {
+
+        result = {
             "reference_key": self.reference_key,
             "function_call": self.function_call,
             "params": full_params,
-        }, errors
+        }
+
+        if self._docs != None:
+            result["docs"] = self._docs
+
+        return result, errors
 
     def parse_params(self):
 
@@ -447,6 +454,7 @@ class MethodCall(Node):
 
         # get the function args that are missing from the params
         params, errors = utils.get_function_args(function, self.param_node)
+        self._docs = utils.parse_docs(function)
         errors = [e for e in errors if e != None and e != []]
 
         return params, errors
@@ -540,14 +548,20 @@ class MethodArgNode(Node):
             if self._py_object:
                 m = getattr(self._py_object, function)
                 p, error = utils.get_function_args(m, full_args["params"])
+                docs = utils.parse_docs(m)
                 errors += error
                 gen_method["params"] = p
+                if docs:
+                    gen_method["docs"] = docs
             else:
                 try:
                     # ipdb.set_trace()
                     m = getattr(self.load_module(), function)
                     p, error = utils.get_function_args(m, full_args["params"])
+                    docs = utils.parse_docs(m)
                     gen_method["params"] = p
+                    if docs:
+                        gen_method["docs"] = docs
                     errors += error
                 except:
                     gen_method["params"] = full_args["params"]
@@ -602,6 +616,9 @@ class FunctionModuleCall(MethodArgNode):
         full_params, err = self.parse_params()
         result["params"] = full_params
 
+        if self._docs != None:
+            result["docs"] = self._docs
+
         errs += err
 
         # remove None from errors
@@ -615,6 +632,8 @@ class FunctionModuleCall(MethodArgNode):
         function = getattr(module, self.function)
 
         params, errors = utils.get_function_args(function, self._param_node)
+
+        self._docs = utils.parse_docs(function)
 
         errors = [e for e in errors if e != None and e != []]
 
@@ -712,6 +731,9 @@ class Object(MethodArgNode):
         full_params, err = self.parse_params()
         result["params"] = full_params
 
+        if self._docs != None:
+            result["docs"] = self._docs
+
         errs += err
 
         # remove None from errors
@@ -729,6 +751,7 @@ class Object(MethodArgNode):
         errors = err
 
         params, erros = utils.get_function_args(module, params)
+        self._docs = utils.parse_docs(module)
 
         errors += erros
         errors = [e for e in errors if e != None and e != []]
