@@ -1,2 +1,22 @@
+import sys
+import ipdb
+import json
 
-print("Running bomba.py")
+from bombilla.node import Node, load_node
+
+# print("Running bomba.py")
+argsv = sys.argv[1:]
+
+# ipdb.set_trace()
+if argsv[0] == "metadata":
+    dic = argsv[1]
+    if dic[0] == "'":
+        dic = dic[1:]
+    if dic[-1] == "'":
+        dic = dic[:-1]
+
+    Node.set_config("", {})
+    dic = dict(json.loads(dic))
+    node = load_node(dic)
+    node.__load__()
+    print(node.generate_full_dict())

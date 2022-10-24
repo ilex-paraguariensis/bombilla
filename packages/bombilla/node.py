@@ -15,7 +15,7 @@ SimpleType = Union[str, int, float, bool, None]
 class Node:
     object_key: Optional[str] = None
     _py_object: Optional[object] = None
-    _docs: Optional[dict] = None
+    _docs: Optional[str] = None
 
     def __init__(self, args, parent=None, **kawrgs) -> None:
         self._original_keys = args.keys()
@@ -89,6 +89,8 @@ class Node:
     def load_module(self):
         assert "module" in self.__dict__, "module not found"
 
+        # ipdb.set_trace()
+
         fromlist = [self.class_name] if hasattr(self, "class_name") else []
         fromlist = [getattr(self, "class")] if hasattr(self, "class") else fromlist
 
@@ -99,10 +101,10 @@ class Node:
             fromlist = [self.class_type]
 
         module_list = [
-            # Node._base_module + "." + self.module,
-            Node._root_module + "." + self.module,
             self.module,
         ]
+        if Node._root_module != None and self._root_module != "":
+            module_list.append(Node._root_module + "." + self.module)
         module = None
         for module_name in module_list:
             # print(f"Trying to import {module_name}")
