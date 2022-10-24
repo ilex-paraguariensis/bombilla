@@ -542,6 +542,15 @@ class MethodArgNode(Node):
                 p, error = utils.get_function_args(m, full_args["params"])
                 errors += error
                 gen_method["params"] = p
+            else:
+                try:
+                    # ipdb.set_trace()
+                    m = getattr(self.load_module(), function)
+                    p, error = utils.get_function_args(m, full_args["params"])
+                    gen_method["params"] = p
+                    errors += error
+                except:
+                    gen_method["params"] = full_args["params"]
 
             results += [gen_method]
 
