@@ -103,7 +103,7 @@ class Node:
         module_list = [
             self.module,
         ]
-        if Node._root_module != None and self._root_module != "":
+        if hasattr(Node, "_root_module") and Node._root_module != None and self._root_module != "":
             module_list.append(Node._root_module + "." + self.module)
         module = None
         for module_name in module_list:
