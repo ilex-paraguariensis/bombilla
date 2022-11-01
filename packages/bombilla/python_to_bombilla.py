@@ -2,23 +2,11 @@ import ast
 import ipdb
 import json
 
-# which syntax elements are allowed at module level?
-whitelist = [
-    # docstring
-    lambda x: isinstance(x, ast.Expr) and isinstance(x.value, ast.Str),
-    # import
-    lambda x: isinstance(x, ast.Import),
-    # class
-    lambda x: isinstance(x, ast.ClassDef),
-    # function
-    lambda x: isinstance(x, ast.FunctionDef),
-]
-
 
 class Node:
     def __init__(self, object_key: str):
         self.object_key = object_key
-        self.import_name = ""
+        self.module = ""
         self.class_name = ""
         self.params = {}
 
@@ -75,6 +63,7 @@ def parse_args(val) -> dict | list | int | float | str:
                 elif isinstance(arg.value, ast.Dict):
                     sub_res = {}
                     for key, val in zip(arg.value.keys, arg.value.values):
+                        assert isinstance(key, ast.Constant)
                         sub_res[key.value] = parse_args(val)
                     result[arg.arg] = sub_res
                 elif isinstance(arg.value, ast.List):
@@ -82,10 +71,8 @@ def parse_args(val) -> dict | list | int | float | str:
     elif isinstance(val, ast.Dict):
         result = {}
         for key, subval in zip(val.keys, val.values):
+            assert isinstance(key, ast.Constant)
             result[key.value] = parse_args(subval)
-    elif isinstance(val, ast.List):
-        ipdb.set_trace()
-        result = [parse_args(subval) for subval in val]  # FIXME
     elif isinstance(val, ast.Constant):
         result = val.value
     else:
@@ -94,10 +81,9 @@ def parse_args(val) -> dict | list | int | float | str:
     return result
 
 
-def validate(source, required_functions):
+def validate(source):
     tree = ast.parse(source)
     nodes = {}
-    required_functions = set(required_functions)
     imports = {}
     returns = {}
     for item in tree.body:
@@ -133,15 +119,10 @@ def validate(source, required_functions):
                                     reference_key, function_call, params
                                 )
                                 acc.append(function_call)
-                # parses the parameters of the function call
 
         elif isinstance(item, ast.ImportFrom):
             for name in item.names:
                 imports[name.name] = item.module
-        """
-        if all(not checker(item) for checker in whitelist):
-            return False
-        """
     for _, node in nodes.items():
         node.import_name = imports.get(node.class_name, "")
 
@@ -151,11 +132,17 @@ def validate(source, required_functions):
     }
     # at least the required functions must be there
     # return len(required_functions - functions) == 0
-    print(json.dumps(result, indent=4))
-    return True
+    return result
 
+def python_to_bombilla(python_file_name:str):
+    with open(python_file_name, "rb") as f:
+        source = f.read()
+    result = validate(source)
+    print(json.dumps(result, indent=4))
+    return result
+
+def main():
+    python_to_bombilla("test_bombillas/default.py")
 
 if __name__ == "__main__":
-    required_funcs = ["init", "execute", "cleanup"]
-    with open("generated.py", "rb") as f:
-        print("yay!" if validate(f.read(), required_funcs) else "d'oh!")
+    main()
