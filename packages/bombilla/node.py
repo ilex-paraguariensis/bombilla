@@ -2,6 +2,8 @@ from distutils import errors
 from re import S
 from typing import Optional, Any, Callable, Type, Union
 import json
+
+import toml
 from .utils.metadata import generate_metadata
 
 from . import utils
@@ -103,7 +105,11 @@ class Node:
         module_list = [
             self.module,
         ]
-        if hasattr(Node, "_root_module") and Node._root_module != None and self._root_module != "":
+        if (
+            hasattr(Node, "_root_module")
+            and Node._root_module != None
+            and self._root_module != ""
+        ):
             module_list.append(Node._root_module + "." + self.module)
         module = None
         for module_name in module_list:
@@ -131,6 +137,18 @@ class Node:
         #     module = getattr(module, getattr[self, "class_name"])
 
         return module
+
+    def get_imports(self):
+        if not hasattr(self, "module"):
+            return None
+        if hasattr(self, "class_name"):
+            return f"from {self.module} import {self.class_name}"
+        if hasattr(self, "function"):
+            return f"from {self.module} import {self.function}"
+        if hasattr(self, "class_type"):
+            return f"from {self.module} import {self.class_type}"
+
+        return f"import {self.module}"
 
     def _json(self):
         # returns a simple json representing the node (filtering out private properties and methods)
@@ -219,6 +237,10 @@ class Node:
             )
             return super_dict
 
+    def to_toml(self):
+        t = toml.dumps(self.to_dict())
+        return t
+
     # def __dict__(self):
     #     super_dict = super().__dict__
     #     return dict({key: val for key, val in super_dict.items() if not key.startswith("_")})
@@ -230,11 +252,13 @@ class NodeDict(Node):
         assert type(args) == dict, "args must be a dict"
         super().__init__(args, **kawrgs)
         self._node_key_dict = {}
+        self._loaded = False
 
     def __load__(self, parent: Optional[Node] = None):
 
-        # ipdb.set_trace()
-        # self._parent = parent
+        if self._loaded:
+            return self
+
         for key, val in self.__dict__.items():
 
             if not key.startswith("_") and key in self._original_keys:
@@ -254,6 +278,8 @@ class NodeDict(Node):
                             val[i] = item
                             self._node_key_dict[key] = nodes
                     setattr(self, key, val)
+
+        self._loaded = True
 
         return self
 
@@ -793,6 +819,54 @@ class ClassTypeAnnotation(Node):
         return self.to_dict(), []
 
 
+class ExperimentNode(NodeDict):
+    returns: dict = {}
+
+    def __init__(self, args, **kawrgs) -> None:
+        # ipdb.set_trace()
+        assert type(args) == dict, "args must be a dict"
+        assert "returns" in args, "returns must be in args"
+        super().__init__(args, **kawrgs)
+        self._node_key_dict = {}
+
+    def __call__(self, *args: Any, **kwds: Any) -> Any:
+
+        self.load_dynamic_objects()
+
+        def val_to_call(val):
+            if isinstance(val, Node):
+                return val()
+            elif isinstance(val, list):
+                return [val_to_call(item) for item in val]
+            else:
+                return val
+
+        result = {
+            key: val_to_call(val)
+            for key, val in self.__dict__.items()
+            if not key.startswith("_")
+            and key in self._original_keys
+            and key != "returns"
+        }
+
+        return result
+
+    def val_to_call(self, val):
+        if isinstance(val, Node):
+            return val()
+        elif isinstance(val, list):
+            return [self.val_to_call(item) for item in val]
+        else:
+            return val
+
+    def execute_experiment(self, type: str = ""):
+
+        assert type in self.returns, f"{type} not in returns"
+        node = self.returns[type]
+
+        return self.val_to_call(node)
+
+
 node_types: list[Type] = [
     Object,
     MethodCall,
@@ -800,6 +874,7 @@ node_types: list[Type] = [
     ObjectMethodCall,
     ObjectReference,
     ClassTypeAnnotation,
+    ExperimentNode,
     NodeDict,
 ]
 SyntaxNode = Union[
@@ -809,6 +884,7 @@ SyntaxNode = Union[
     ObjectReference,
     ObjectMethodCall,
     ClassTypeAnnotation,
+    ExperimentNode,
     NodeDict,
 ]
 

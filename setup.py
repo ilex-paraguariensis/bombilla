@@ -13,6 +13,7 @@ setup(
     package_dir={"": "packages/"},
     license="Apache License 2.0",
     license_files=("LICENSE",),
+    requires=["toml"],
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     classifiers=[
