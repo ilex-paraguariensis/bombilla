@@ -47,9 +47,6 @@ def parse_args(val) -> dict | list | int | float | str:
         return [parse_args(v) for v in val]
     elif (
         isinstance(val, list)
-        #    isinstance(val[0], ast.keyword)
-        #    or isinstance(val[0], ast.Constant)
-        # )
     ):
         result = {}
         for i, arg in enumerate(val):
