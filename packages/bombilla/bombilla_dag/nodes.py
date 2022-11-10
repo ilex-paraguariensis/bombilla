@@ -32,6 +32,7 @@ class Node:
     @params.setter
     def params(self, params: dict[str, Any]):
         assert isinstance(params, dict)
+
         def check_type(val):
             if isinstance(val, Node):
                 return True
@@ -43,14 +44,19 @@ class Node:
                 return True
             else:
                 return False
+
         for k, v in params.items():
-            assert check_type(v), ipdb.set_trace() #f"Invalid type {type(v)} for param {k}"
+            assert check_type(
+                v
+            ), ipdb.set_trace()  # f"Invalid type {type(v)} for param {k}"
         self.__params = params
 
     def __setitem__(self, key, value):
         if key != "params":
             assert key in self.__dict__, f"Invalid key {key} for Node"
-            assert type(value) == type(self.__dict__[key]), f"Invalid type {type(value)} for key {key}"
+            assert type(value) == type(
+                self.__dict__[key]
+            ), f"Invalid type {type(value)} for key {key}"
             self.__dict__[key] = value
         else:
             self.params = value
@@ -177,9 +183,7 @@ class ClassTypeNode(Node):
     ):
         self.class_type = class_type
         self.module = module
-        super().__init__(
-            object_key=f"_{self.class_type}", path=path, params=params
-        )
+        super().__init__(object_key=f"_{self.class_type}", path=path, params=params)
 
     @staticmethod
     def is_one(obj: Any) -> bool:

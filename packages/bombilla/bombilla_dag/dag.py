@@ -10,7 +10,7 @@ class DAG:
         self.__nodes: dict[str, Node] = {"__root__": root}
         self.edges: list[Edge] = []
         self.path_edges: list[Edge] = []
-        
+
     def plot(self):
         try:
             import networkx as nx
@@ -49,9 +49,6 @@ class DAG:
         return self.__str__()
 
     def prune(self):
-        pass
-
-    def from_py(self, ):
         pass
 
     def add_node(self, node: Node):
@@ -97,11 +94,10 @@ class DAG:
         assert object_key in self, f"No node with {object_key=}"
         return [edge for edge in self.edges if edge.from_key == object_key]
 
-
     def path_edge_to(self, key: str | Node) -> Edge | None:
         object_key = key if isinstance(key, str) else key.object_key
         assert object_key in self, f"No node with {object_key=}"
-        selected =[edge for edge in self.path_edges if edge.to_key == object_key]
+        selected = [edge for edge in self.path_edges if edge.to_key == object_key]
         return selected[0] if len(selected) > 0 else None
 
     def path_edges_from(self, key: str | Node) -> list[Edge]:
@@ -138,7 +134,9 @@ class DAG:
     def parents(self, key: Node | str) -> list[Node]:
         return [self[e.from_key] for e in self.edges_to(key)]
 
-    def path_parent(self, key: Node | str) -> Node | None: # path is a tree, so at most one parent (root doesn't count)
+    def path_parent(
+        self, key: Node | str
+    ) -> Node | None:  # path is a tree, so at most one parent (root doesn't count)
         edge = self.path_edge_to(key)
         if edge is None:
             return None
@@ -194,7 +192,7 @@ class DAG:
 
     def path_children(self, key: Node | str) -> list[Node]:
         return [self[e.to_key] for e in self.path_edges_from(key)]
-    
+
     def to_dict(self):
         result = {
             val.object_key: val.to_dict()
@@ -217,5 +215,3 @@ class DAG:
                 span = res.span()
                 return val[span[0] + 1 : span[1] - 1]
         return None
-    
-    

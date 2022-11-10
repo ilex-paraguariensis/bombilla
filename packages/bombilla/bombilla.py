@@ -2,6 +2,7 @@
 
 from .node import Node, NodeDict
 import ipdb
+from .bombilla_dag.bombilla_dag import BombillaDAG
 
 
 class Bombilla(dict):
@@ -16,6 +17,16 @@ class Bombilla(dict):
 
         Node.set_config(root_module, object_key_map)
         self.root_node = NodeDict(dict(bombilla_dict))
+
+    @classmethod
+    def from_py(cls, filename: str):
+        dag = BombillaDAG.from_py(filename)
+        return cls(dag.to_dict())
+
+    @classmethod
+    def from_json(cls, filename: str):
+        dag = BombillaDAG.from_json(filename)
+        return cls(dag.to_dict())
 
     def load(self):
         self.root_node.__load__()
