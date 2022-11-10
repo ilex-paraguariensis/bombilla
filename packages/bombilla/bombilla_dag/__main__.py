@@ -1,10 +1,10 @@
 from .bombilla_dag import BombillaDAG
-
+import ipdb
 
 if __name__ == "__main__":
     dag = BombillaDAG("./test_bombillas/default.json")
     print(dag)
-    print(dag.print(True))
+    # print(dag.print(True))
     """
     dag.plot()
     print(dag.roots(keys_only=True))
@@ -16,4 +16,6 @@ if __name__ == "__main__":
     # print(dag.to_py())
     print(dag.to_json())
     """
-    dag.to_py("./test_bombillas/default.py")
+    # dag.to_py("./test_bombillas/default.py")
+    dag2 = BombillaDAG("./test_bombillas/default.py")
+    print(dag2)

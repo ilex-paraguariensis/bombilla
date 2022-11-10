@@ -2,6 +2,7 @@ from typing import Any
 import json
 import random
 import re
+import ipdb
 
 # TODO: merge these nodes with the ones defined in the other file
 class Node:
@@ -11,12 +12,10 @@ class Node:
         path: list[str],
         params: None | dict[str, Any] = None,
         class_type: str | None = None,
-        module: None | str = None,
         class_name: None | str = None,
     ):
         self.object_key = object_key
-        self.module = module
-        self.params: dict[str, Any] = params if params is not None else {}
+        self.__params: dict[str, Any] = params if params is not None else {}
         self.path = path
         assert not (
             (class_type is not None) and (class_name is not None)
@@ -25,6 +24,42 @@ class Node:
             assert (
                 module is not None
             ), f"Node {object_key} has 'class_name' or 'class_type' defined, but no 'module' defined. This is not allowed."
+
+    @property
+    def params(self):
+        return self.__params
+
+    @params.setter
+    def params(self, params: dict[str, Any]):
+        assert isinstance(params, dict)
+        def check_type(val):
+            if isinstance(val, Node):
+                return True
+            elif isinstance(val, list):
+                return all([check_type(el) for el in val])
+            elif isinstance(val, dict):
+                return all([check_type(v) for v in val.values()])
+            elif isinstance(val, (str, int, float, bool, type(None))):
+                return True
+            else:
+                return False
+        for k, v in params.items():
+            assert check_type(v), ipdb.set_trace() #f"Invalid type {type(v)} for param {k}"
+        self.__params = params
+
+    def __setitem__(self, key, value):
+        if key != "params":
+            assert key in self.__dict__, f"Invalid key {key} for Node"
+            assert type(value) == type(self.__dict__[key]), f"Invalid type {type(value)} for key {key}"
+            self.__dict__[key] = value
+        else:
+            self.params = value
+
+    def __getitem__(self, key: str):
+        if key != "params":
+            return self.__dict__[key]
+        else:
+            return self.params
 
     def to_dict(self) -> dict[str, Any]:
         def get_bombilla_dict(obj: Any) -> Any:
@@ -39,7 +74,7 @@ class Node:
                     obj, Node
                 ), f"{type(obj)} is not a valid type for a Node"
                 return {
-                    k: get_bombilla_dict(v)
+                    k if not "params" in k else "params": get_bombilla_dict(v)
                     for k, v in obj.__dict__.items()
                     if k != "path" and not (isinstance(v, str) and v.startswith("_"))
                 }
@@ -84,7 +119,7 @@ class Node:
                 to_set[current_key] = obj
                 return
             next_obj = to_set[current_key]
-        elif isinstance(target, dict):
+        elif isinstance(target, dict) or isinstance(target, Node):
             to_set = target
             current_key = path[0]
             if len(path) == 1:
@@ -141,8 +176,9 @@ class ClassTypeNode(Node):
         params: None | dict[str, Any] = None,
     ):
         self.class_type = class_type
+        self.module = module
         super().__init__(
-            object_key=f"_{self.class_type}", path=path, params=params, module=module
+            object_key=f"_{self.class_type}", path=path, params=params
         )
 
     @staticmethod
@@ -174,13 +210,14 @@ class ClassNameNode(Node):
         params: None | dict[str, Any] = None,
     ):
         self.class_name = class_name
+        self.module = module
         # puts new_obj_key from PascalCase to snake_case
         object_key = (
             object_key
             if object_key is not None
             else (f"_{class_name}_{Node._rand_hex(3)}")
         )
-        super().__init__(object_key=object_key, path=path, params=params, module=module)
+        super().__init__(object_key=object_key, path=path, params=params)
 
     def to_py(self, at_root: bool = False) -> str:
         return f"{self.class_name}({self._render_params(self.params)})"
@@ -226,9 +263,9 @@ class FunctionCall(Node):
     ):
         self.reference_key = reference_key
         self.function_call = function_call
-        self.params = params if params is not None else {}
         object_key = f"_{reference_key}.{function_call}(..)_{Node._rand_hex(3)}"
         super().__init__(object_key=object_key, path=path)
+        self.params = params if params is not None else {}
 
     def to_py(self, at_root: bool = False):
         params = self._render_params(self.params)

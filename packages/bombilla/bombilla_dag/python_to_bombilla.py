@@ -61,7 +61,9 @@ def parse_args(val) -> dict | list | int | float | str:
                     sub_res = {}
                     for key, val in zip(arg.value.keys, arg.value.values):
                         assert isinstance(key, ast.Constant)
-                        sub_res[key.value] = parse_args(val)
+                        uba = parse_args(val)
+                        ipdb.set_trace()
+                        sub_res[key.value] = uba
                     result[arg.arg] = sub_res
                 elif isinstance(arg.value, ast.List):
                     result[arg.arg] = parse_args(arg.value.elts)

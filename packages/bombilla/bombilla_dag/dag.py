@@ -55,6 +55,7 @@ class DAG:
         pass
 
     def add_node(self, node: Node):
+        assert isinstance(node, Node), f"Expected Node, got {type(node)}"
         assert (
             not node in self
         ), f"Node with object_key={node.object_key} already present"
@@ -63,24 +64,27 @@ class DAG:
     def add_path_edge(self, from_node: Node | str | None, to_node: Node | str):
         from_node = from_node if from_node is not None else self["__root__"]
         edge = Edge(from_node, to_node)
+        """
         assert (
             edge.from_key in self
         ), f"Error inserting edge, no node with object_key={edge.from_key}"
         assert (
             edge.to_key in self
         ), f"Error inserting edge, no node with object_key={edge.to_key}"
-
+        """
         self.path_edges.append(edge)
 
     def add_edge(self, from_node: Node | str, to_node: Node | str, path: list[str]):
         edge = Edge(from_node, to_node, path)
         assert not edge in self, "Tried to insert twice the same edge"
+        """
         assert (
             edge.from_key in self
         ), f"Error inserting edge, no node with object_key={edge.from_key}"
         assert (
             edge.to_key in self
         ), f"Error inserting edge, no node with object_key={edge.to_key}"
+        """
         self.edges.append(edge)
 
     def edges_to(self, key: str | Node) -> list[Edge]:
