@@ -37,23 +37,6 @@ class BombillaDAG(DAG):
             content = json.loads(f.read())
         return cls(content)
 
-    def plot(self):
-        try:
-            import networkx as nx
-        except ImportError:
-            print(
-                "Networkx is not installed. Please install networkx to use this feature."
-            )
-            return
-        import matplotlib.pyplot as plt
-
-        G = nx.DiGraph()
-        G.add_nodes_from(self.__nodes.keys())
-        G.add_edges_from([(e.from_key, e.to_key) for e in self.edges])
-        nx.draw(G, with_labels=True)
-        # plt.show()
-        plt.savefig("graph.png")
-
     def __str__(self):
         return self.print()
 
@@ -62,6 +45,12 @@ class BombillaDAG(DAG):
 
     def prune(self):
         pass
+
+    @classmethod
+    def format_json(cls, filename: str):
+        dag = cls.from_json(filename)
+        with open(filename, "w") as f:
+            f.write(dag.to_json())
 
     def __flatten(self):
         def path_walk(node: Any, parent: Node | None = None):
@@ -95,7 +84,7 @@ class BombillaDAG(DAG):
             assert parent is not None, ipdb.set_trace()
             ref = self.__get_ref(bomb)
             if ref is not None:
-                if ref in ("save_path",):
+                if ref in ("save_dir",):
                     self.add_node(ValueNode(ref, path))
                 self.add_edge(ref, parent, path)
             parent.assign(path, bomb)
@@ -104,7 +93,7 @@ class BombillaDAG(DAG):
             self.add_node(node)
             self.add_path_edge(parent, node)
             assert isinstance(bomb, list)
-            assert len(path) == 1
+            # assert len(path) == 1
             for i, child in enumerate(bomb):
                 self.__from_dict(child, path + [str(i)], node)
         elif isinstance(bomb, list):
@@ -157,6 +146,8 @@ class BombillaDAG(DAG):
                 """
             else:
                 for key, val in bomb.items():
+                    # if key == "experiment":
+                    #    ipdb.set_trace()
                     self.__from_dict(val, path + [key], parent)
         else:
             if not path[-1] == "params":
@@ -184,25 +175,27 @@ class BombillaDAG(DAG):
     def to_py(self, filename: str | None = None):
         code = []
         for node in self.nodes:
-            if isinstance(node, ClassNameNode) or isinstance(node, ClassTypeNode):
+            if isinstance(node, ClassNameNode) or isinstance(node, ClassTypeNode) or isinstance(node, ValueNode):
                 class_name = node.__dict__.get(
                     "class_name", node.__dict__.get("class_type")
                 )
-                if class_name is not None:
-                    assert node.module is not None
-                    module_split = node.module.split(".")
-                    if len(module_split) > 1 and module_split[0] in (
-                        "trainers",
-                        "models",
-                        "data",
-                    ):
-                        module = ".." + ".".join(module_split)
-                    else:
-                        module = node.module
+                assert node.module is not None
+                module = node.module
+                module_split = node.module.split(".")
+                if len(module_split) > 1 and module_split[0] in (
+                    "trainers",
+                    "models",
+                    "data",
+                ):
+                    module = ".." + ".".join(module_split)
+                else:
+                    module = node.module
 
+                if class_name is not None:
                     code.append(f"from {module} import {class_name}")
-                elif node.module is not None:
+                else:
                     code.append(f"import {module}")
+                
         for node in self.path_sort():
             if isinstance(node, ValueNode):
                 code.append(node.to_py(at_root=True))
@@ -230,12 +223,19 @@ class BombillaDAG(DAG):
         return result
 
     def to_dict(self):
-        result = {
-            val.object_key: val.to_dict()
-            for val in self.path_sort()
-            if not type(val) in (FunctionCall,) and not val.object_key == "save_dir"
+        return {
+            "objects": {
+                val.object_key: val.to_dict()
+                for val in self.path_sort()
+                if not type(val) in (FunctionCall, ReturnNode)
+                and not val.object_key == "save_dir"
+            },
+            "experiment": {
+                val.object_key: val.to_dict()
+                for val in self.nodes
+                if isinstance(val, ReturnNode) and not val.object_key == "save_dir"
+            },
         }
-        return result
 
     def to_json(self):
         return json.dumps(self.to_dict(), indent=4)

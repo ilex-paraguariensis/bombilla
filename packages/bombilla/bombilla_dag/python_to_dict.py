@@ -1,11 +1,11 @@
 import ast
 import ipdb
-from .nodes import Node, ClassTypeNode, ClassNameNode, FunctionCall
+from .nodes import Node, ClassTypeNode, ClassNameNode, FunctionCall, ReturnNode
 from typing import Any
 
 
 def parse_args(
-    self, val, parent: Node, nodes: dict[str, Node], imports: dict[str, str]
+    val, parent: Node, nodes: dict[str, Node], imports: dict[str, str]
 ) -> dict | list | int | float | str | bool | Node:
     if isinstance(val, ast.Name):
         if val.id in imports:
@@ -25,7 +25,7 @@ def parse_args(
             )
             > 0
         ):
-            return [self.parse_args(v, parent, nodes, imports) for v in val]
+            return [parse_args(v, parent, nodes, imports) for v in val]
         else:
             result = {}
             for i, arg in enumerate(val):
@@ -40,11 +40,11 @@ def parse_args(
                         path=[], class_name=arg.func.id, module=imports[arg.func.id]
                     )
                     # nodes[node.object_key] = node
-                    uba = self.parse_args(arg.keywords, node, nodes, imports)
+                    uba = parse_args(arg.keywords, node, nodes, imports)
                     node.params = uba
                     result[i] = node
                 elif isinstance(arg.value, ast.Constant):
-                    result[arg.arg] = self.parse_args(
+                    result[arg.arg] = parse_args(
                         arg.value.value, parent, nodes, imports
                     )
                 elif isinstance(arg.value, ast.JoinedStr):
@@ -63,7 +63,7 @@ def parse_args(
                             class_name=arg.value.func.id,
                             module=imports[arg.value.func.id],
                         )
-                        uba = self.parse_args(arg.value.keywords, node, nodes, imports)
+                        uba = parse_args(arg.value.keywords, node, nodes, imports)
                         node.params = uba
                         result[arg.arg] = node
                     else:
@@ -72,24 +72,20 @@ def parse_args(
                             function_call=arg.value.func.attr,
                             reference_key=arg.value.func.value.id,
                         )
-                        uba = self.parse_args(arg.value.keywords, node, nodes, imports)
+                        uba = parse_args(arg.value.keywords, node, nodes, imports)
                         node.params = uba if uba else {}
                         result[arg.arg] = node
                 else:
                     if isinstance(arg.value, ast.Name):
-                        result[arg.arg] = self.parse_args(
-                            arg.value, parent, nodes, imports
-                        )
+                        result[arg.arg] = parse_args(arg.value, parent, nodes, imports)
                     elif isinstance(arg.value, ast.Dict):
                         sub_res = {}
                         for key, val in zip(arg.value.keys, arg.value.values):
                             assert isinstance(key, ast.Constant)
-                            sub_res[key.value] = self.parse_args(
-                                val, parent, nodes, imports
-                            )
+                            sub_res[key.value] = parse_args(val, parent, nodes, imports)
                         result[arg.arg] = sub_res
                     elif isinstance(arg.value, ast.List):
-                        uba = self.parse_args(arg.value.elts, parent, nodes, imports)
+                        uba = parse_args(arg.value.elts, parent, nodes, imports)
                         if isinstance(uba, list):
                             result[arg.arg] = uba
                         else:
@@ -101,7 +97,7 @@ def parse_args(
         result = {}
         for key, subval in zip(val.keys, val.values):
             assert isinstance(key, ast.Constant)
-            uba = self.parse_args(subval, parent, nodes, imports)
+            uba = parse_args(subval, parent, nodes, imports)
             assert isinstance(
                 uba, (str, int, float, bool, Node, list, dict)
             ), ipdb.set_trace()
@@ -115,7 +111,7 @@ def parse_args(
             path=[], class_name=val.func.id, module=imports[val.func.id]
         )
         # nodes.append(node)
-        uba = self.parse_args(val.keywords, node, nodes, imports)
+        uba = parse_args(val.keywords, node, nodes, imports)
         node.params = uba
         result = node
     else:
@@ -124,7 +120,7 @@ def parse_args(
     return result
 
 
-def python_to_dict(self, body: list[ast.AST]) -> dict[str, Any]:
+def python_to_dict(body: list[ast.AST]) -> dict[str, Any]:
     nodes = {}
     imports = {}
     returns = {}
@@ -151,7 +147,7 @@ def python_to_dict(self, body: list[ast.AST]) -> dict[str, Any]:
                             module=imports[item.value.func.id],
                         )
                         nodes[node.object_key] = node
-                        uba = self.parse_args(item.value.keywords, node, nodes, imports)
+                        uba = parse_args(item.value.keywords, node, nodes, imports)
 
                         node.params = uba
                     else:
@@ -167,9 +163,7 @@ def python_to_dict(self, body: list[ast.AST]) -> dict[str, Any]:
 
                                 reference_key = x.func.value.id
                                 function_call = x.func.attr
-                                params = self.parse_args(
-                                    x.keywords, None, nodes, imports
-                                )
+                                params = parse_args(x.keywords, None, nodes, imports)
                                 # for arg in x.keywords:
                                 #     params[arg.arg] = "{" + arg.value.id + "}"
                                 function_call = FunctionCall(
@@ -179,7 +173,7 @@ def python_to_dict(self, body: list[ast.AST]) -> dict[str, Any]:
                                     path=[],
                                 )
                                 acc.append(function_call)
-    returns = returns | nodes  # {node.object_key: node for node in nodes}
+    # returns = returns | nodes  # {node.object_key: node for node in nodes}
 
     def to_dict(val):
         if isinstance(val, Node):
@@ -191,6 +185,10 @@ def python_to_dict(self, body: list[ast.AST]) -> dict[str, Any]:
         else:
             return val
 
-    returns = to_dict(returns)
-    assert isinstance(returns, dict)
-    return returns
+    # returns = to_dict(returns)
+    # assert isinstance(returns, dict)
+    result = {
+        "objects": {key: val.to_dict() for key, val in nodes.items()},
+        "experiment": {key: [v.to_dict() for v in val] for key, val in returns.items()},
+    }
+    return result

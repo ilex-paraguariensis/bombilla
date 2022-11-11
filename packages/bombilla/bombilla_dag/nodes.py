@@ -246,13 +246,14 @@ class ClassNameNode(Node):
 class ValueNode(Node):
     def __init__(self, object_key: str, path: list[str]):
         super().__init__(object_key, path)
-        self.module = "os.environ"
-        self.class_name = "get"
+        self.module = "os"
+        self.class_name = None
+        self.__fn = "os.environ.get"
         self.__key = self.object_key.upper()
 
     def to_py(self, at_root: bool = False):
         if at_root:
-            return f"{self.object_key}:str = get('{self.__key}')"
+            return f"{self.object_key}:str = {self.__fn}('{self.__key}')"
         else:
             return self.object_key
 
@@ -311,6 +312,9 @@ class ReturnNode(Node):
 
     def to_py(self, at_root: bool = False):
         return f"[{','.join([f'{el.to_py()}' for el in self.execution_cue if el is not None])}]"
+
+    def to_dict(self):
+        return [el.to_dict() if el is not None else None for el in self.execution_cue]
 
     @staticmethod
     def is_one(bomb: Any):

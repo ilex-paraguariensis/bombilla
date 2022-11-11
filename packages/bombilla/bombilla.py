@@ -13,6 +13,7 @@ class Bombilla(dict):
         object_key_map: dict = {},
     ) -> None:
 
+        self.dag = BombillaDAG(bombilla_dict)
         assert isinstance(bombilla_dict, dict), "Bambilla must be a dict"
 
         Node.set_config(root_module, object_key_map)
@@ -27,6 +28,10 @@ class Bombilla(dict):
     def from_json(cls, filename: str):
         dag = BombillaDAG.from_json(filename)
         return cls(dag.to_dict())
+
+    @classmethod
+    def format_json(cls, filename: str):
+        BombillaDAG.format_json(filename)
 
     def load(self):
         self.root_node.__load__()

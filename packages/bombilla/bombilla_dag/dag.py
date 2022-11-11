@@ -1,6 +1,7 @@
 from .nodes import Node, ValueNode, Edge, FunctionCall
 import subprocess
 from typing import Any
+import json
 
 
 class DAG:
@@ -194,12 +195,7 @@ class DAG:
         return [self[e.to_key] for e in self.path_edges_from(key)]
 
     def to_dict(self):
-        result = {
-            val.object_key: val.to_dict()
-            for val in self.path_sort()
-            if not type(val) in (FunctionCall,) and not val.object_key == "save_dir"
-        }
-        return result
+        return {}
 
     def to_json(self):
         return json.dumps(self.to_dict(), indent=4)

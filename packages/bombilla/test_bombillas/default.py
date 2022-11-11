@@ -10,9 +10,10 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.callbacks import ModelCheckpoint
+import os
 from aim.pytorch_lightning import AimLogger
 
-save_dir: str = get("SAVE_DIR")
+save_dir: str = os.environ.get("SAVE_DIR")
 trainer = Trainer(
     gpus=1,
     max_epochs=100,
