@@ -725,7 +725,6 @@ class Object(MethodArgNode):
             return self._py_object
 
         module = self.load_module()
-
         self._py_object = module(**self.param_node())
         self.post_object_creation()
         return self._py_object

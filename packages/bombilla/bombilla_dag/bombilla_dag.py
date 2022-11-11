@@ -16,26 +16,64 @@ from .nodes import (
 from .dag import DAG
 from .python_to_dict import python_to_dict
 import ast
+from copy import deepcopy
 
 
 class BombillaDAG(DAG):
     def __init__(self, bombilla_dict: dict[str, Any]):
+        bombilla_dict = deepcopy(bombilla_dict)
         super().__init__()
         self.__from_dict(bombilla_dict, [], None)
         self.__flatten()
 
     @classmethod
-    def from_py(cls, filename: str):
-        with open(filename, "rb") as f:
-            raw_content = f.read()
-        content = python_to_dict(ast.parse(raw_content).body)
-        return cls(content)
-
-    @classmethod
-    def from_json(cls, filename: str):
+    def from_json_file(cls, filename: str):
         with open(filename, "r") as f:
             content = json.loads(f.read())
         return cls(content)
+
+    @classmethod
+    def format_json(cls, filename: str):
+        dag = cls.from_json_file(filename)
+        with open(filename, "w") as f:
+            f.write(dag.to_json())
+
+    @classmethod
+    def from_py_string(cls, py_string: str):
+        content = python_to_dict(py_string)
+        return cls(content)
+
+    @classmethod
+    def from_py_file(cls, filename: str):
+        with open(filename, "r") as f:
+            raw_content: str = f.read()
+        content = python_to_dict(raw_content)
+        return cls(content)
+
+    @classmethod
+    def from_string(cls, raw: str):
+        try:
+            return cls.from_py_string(raw)
+        except:
+            try:
+                return cls.from_json_string(raw)
+            except:
+                raise ValueError(
+                    "Could not parse string. Does not seem to be valid JSON or Python."
+                )
+
+    @classmethod
+    def from_file(cls, filename: str):
+        if filename.endswith(".json"):
+            return cls.from_json_file(filename)
+        elif filename.endswith(".py"):
+            return cls.from_py_file(filename)
+        else:
+            raise ValueError("File extension not supported")
+
+    @classmethod
+    def from_json_string(cls, content: str):
+        return cls(json.loads(content))
 
     def __str__(self):
         return self.print()
@@ -45,12 +83,6 @@ class BombillaDAG(DAG):
 
     def prune(self):
         pass
-
-    @classmethod
-    def format_json(cls, filename: str):
-        dag = cls.from_json(filename)
-        with open(filename, "w") as f:
-            f.write(dag.to_json())
 
     def __flatten(self):
         def path_walk(node: Any, parent: Node | None = None):
@@ -175,7 +207,11 @@ class BombillaDAG(DAG):
     def to_py(self, filename: str | None = None):
         code = []
         for node in self.nodes:
-            if isinstance(node, ClassNameNode) or isinstance(node, ClassTypeNode) or isinstance(node, ValueNode):
+            if (
+                isinstance(node, ClassNameNode)
+                or isinstance(node, ClassTypeNode)
+                or isinstance(node, ValueNode)
+            ):
                 class_name = node.__dict__.get(
                     "class_name", node.__dict__.get("class_type")
                 )
@@ -187,7 +223,7 @@ class BombillaDAG(DAG):
                     "models",
                     "data",
                 ):
-                    module = ".." + ".".join(module_split)
+                    module = "..." + ".".join(module_split)
                 else:
                     module = node.module
 
@@ -195,7 +231,7 @@ class BombillaDAG(DAG):
                     code.append(f"from {module} import {class_name}")
                 else:
                     code.append(f"import {module}")
-                
+
         for node in self.path_sort():
             if isinstance(node, ValueNode):
                 code.append(node.to_py(at_root=True))

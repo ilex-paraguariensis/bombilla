@@ -1,9 +1,9 @@
-from ..data.loaders.cifar10.data_loader import CifarLightningDataModule
-from ..trainers.base_classification.base_classification import (
+from ...data.loaders.cifar10.data_loader import CifarLightningDataModule
+from ...trainers.base_classification.base_classification import (
     LightningClassificationModule,
 )
-from ..models.resnet.resnet import ResNet
-from ..models.resnet.resnet import BasicBlock
+from ...models.resnet.resnet import ResNet
+from ...models.resnet.resnet import BasicBlock
 from torch.nn import BatchNorm2d
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau

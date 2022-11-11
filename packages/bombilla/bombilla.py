@@ -20,18 +20,48 @@ class Bombilla(dict):
         self.root_node = NodeDict(dict(bombilla_dict))
 
     @classmethod
-    def from_py(cls, filename: str):
-        dag = BombillaDAG.from_py(filename)
-        return cls(dag.to_dict())
+    def from_file(cls, filename: str, root_module: str = "", object_key_map: dict = {}):
+        return cls(
+            BombillaDAG.from_file(filename).to_dict(), root_module, object_key_map
+        )
 
     @classmethod
-    def from_json(cls, filename: str):
-        dag = BombillaDAG.from_json(filename)
-        return cls(dag.to_dict())
+    def from_py_string(
+        cls, py_string: str, root_module: str = "", object_key_map: dict = {}
+    ):
+        return cls(
+            BombillaDAG.from_py_string(py_string).to_dict(), root_module, object_key_map
+        )
+
+    @classmethod
+    def from_py_file(
+        cls, filename: str, root_module: str = "", object_key_map: dict = {}
+    ):
+        dag = BombillaDAG.from_py_file(filename)
+        return cls(dag.to_dict(), root_module, object_key_map)
+
+    @classmethod
+    def from_json_file(
+        cls, filename: str, root_module: str = "", object_key_map: dict = {}
+    ):
+        dag = BombillaDAG.from_json_file(filename)
+        return cls(dag.to_dict(), root_module, object_key_map)
+
+    @classmethod
+    def from_string(
+        cls, py_string: str, root_module: str = "", object_key_map: dict = {}
+    ):
+        return cls(
+            Bombilla.from_string(py_string).to_dict(), root_module, object_key_map
+        )
 
     @classmethod
     def format_json(cls, filename: str):
         BombillaDAG.format_json(filename)
+
+    @classmethod
+    def from_raw(cls, content: str):
+        pass
 
     def load(self):
         self.root_node.__load__()

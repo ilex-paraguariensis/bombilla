@@ -120,7 +120,8 @@ def parse_args(
     return result
 
 
-def python_to_dict(body: list[ast.AST]) -> dict[str, Any]:
+def python_to_dict(py_string: str) -> dict[str, Any]:
+    body = ast.parse(str.encode(py_string)).body
     nodes = {}
     imports = {}
     returns = {}
