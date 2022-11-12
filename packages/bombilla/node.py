@@ -253,12 +253,14 @@ class NodeDict(Node):
         if self._loaded:
             return self
 
+        # ipdb.set_trace()
+
         for key, val in self.__dict__.items():
 
             if not key.startswith("_") and key in self._original_keys:
                 val = load_node(val, parent=self)
                 if isinstance(val, Node):
-                    val.__load__(self)
+                    val.__load__(parent=self)
                     setattr(self, key, val)
                     self._node_key_dict[key] = val
 
@@ -267,13 +269,14 @@ class NodeDict(Node):
                     for i, item in enumerate(val):
                         item = load_node(item, parent=self)
                         if isinstance(item, Node):
-                            item.__load__(self)
+                            item.__load__(parent=self)
                             nodes.append(item)
                             val[i] = item
                             self._node_key_dict[key] = nodes
                     setattr(self, key, val)
 
         self._loaded = True
+        # ipdb.set_trace()
 
         return self
 
@@ -284,8 +287,8 @@ class NodeDict(Node):
         def val_to_call(val, parent: Node | None = None):
             if isinstance(val, Node):
                 return val()  # if not isinstance(parent, ExperimentNode) else val
-            # elif isinstance(val, list):
-            #    return [val_to_call(item) for item in val]
+            elif isinstance(val, list):
+                return [val_to_call(item) for item in val]
             else:
                 return val
 
@@ -805,50 +808,58 @@ class ClassTypeAnnotation(Node):
         return self.to_dict(), []
 
 
-class ExperimentNode(NodeDict):
-    returns: dict = {}
+class ExperimentNode(Node):
+    objects: dict = {}
+    experiment: dict = {}
 
     def __init__(self, args, **kawrgs) -> None:
+        # ipdb.set_trace()
         assert type(args) == dict, "args must be a dict"
-        assert "returns" in args, "returns must be in args"
         super().__init__(args, **kawrgs)
         self._node_key_dict = {}
+        self._objects_node = NodeDict(self.objects)
+
+    def to_dict(self):
+        return {
+            "objects": self._objects_node.to_dict(),
+            "experiment": self.experiment,
+        }
+
+    def __str__(self):
+        return f"{self.to_dict()}"
+
+    def generate_full_dict(self):
+        return self._objects_node.generate_full_dict()
+
+    def __load__(self, parent: Optional[Node] = None) -> object:
+
+        self._objects_node.__load__()
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
 
         self.load_dynamic_objects()
 
-        def val_to_call(val):
-            if isinstance(val, Node):
-                return val()
-            elif isinstance(val, list):
-                return [val_to_call(item) for item in val]
-            else:
-                return val
+        # ipdb.set_trace()
+        self._objects_node.__call__()
 
-        result = {
-            key: val_to_call(val)
-            for key, val in self.__dict__.items()
-            if not key.startswith("_")
-            and key in self._original_keys
-            and key != "returns"
-        }
+        return self._objects_node
 
-        return result
+    def execute_experiment(self, exec_type: str = "train"):
 
-    def val_to_call(self, val):
-        if isinstance(val, Node):
-            return val()
-        elif isinstance(val, list):
-            return [self.val_to_call(item) for item in val]
-        else:
-            return val
+        assert exec_type in self.experiment, f"{exec_type} not in returns"
+        dic = self.experiment[exec_type]
 
-    def execute_experiment(self, type: str = ""):
-        assert type in self.returns, f"{type} not in returns"
-        node = self.returns[type]
+        # ipdb.set_trace()
 
-        return self.val_to_call(node)
+        nodes = (
+            [load_node(item) for item in dic] if type(dic) == list else [load_node(dic)]
+        )
+
+        for node in nodes:
+            node.__load__()
+            node.__call__()
+
+        return self
 
 
 node_types: list[Type] = [

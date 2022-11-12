@@ -1,8 +1,9 @@
 # Bambilla, API for bamiblla json format and python objects
 
-from .node import Node, NodeDict
+from .node import Node, NodeDict, ExperimentNode
 import ipdb
 from .bombilla_dag.bombilla_dag import BombillaDAG
+
 
 
 class Bombilla(dict):
@@ -17,7 +18,7 @@ class Bombilla(dict):
         assert isinstance(bombilla_dict, dict), "Bambilla must be a dict"
 
         Node.set_config(root_module, object_key_map)
-        self.root_node = NodeDict(dict(bombilla_dict))
+        self.root_node = ExperimentNode(dict(bombilla_dict))
 
     @classmethod
     def from_file(cls, filename: str, root_module: str = "", object_key_map: dict = {}):
@@ -66,8 +67,9 @@ class Bombilla(dict):
     def load(self):
         self.root_node.__load__()
 
-    def execute(self):
+    def execute(self, type: str = "train"):
         self.root_node.__call__()
+        self.root_node.execute_experiment(type)
 
     def generate_full_dict(self):
         self.root_node.__load__()
