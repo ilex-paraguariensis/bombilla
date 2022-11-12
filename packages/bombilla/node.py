@@ -77,7 +77,6 @@ class Node:
                     setattr(self, key, value)
 
     def post_object_creation(self):
-        # ipdb.set_trace()
         if "object_key" in self._original_keys:
             Node._key_value_map[self.object_key] = self._py_object
 
@@ -86,12 +85,9 @@ class Node:
     def generate_metadata(self, obj, metadata):
 
         generate_metadata(obj, metadata, Node._root_module)
-        # ipdb.set_trace()
 
     def load_module(self):
         assert "module" in self.__dict__, "module not found"
-
-        # ipdb.set_trace()
 
         fromlist = [self.class_name] if hasattr(self, "class_name") else []
         fromlist = [getattr(self, "class")] if hasattr(self, "class") else fromlist
@@ -131,7 +127,6 @@ class Node:
             raise ModuleNotFoundError(f'Module "{self.module}" not found')
 
         if "class_name" in self.__dict__:
-            # ipdb.set_trace()
             module = getattr(module, self.class_name)
         # if "class_name" in self:
         #     module = getattr(module, getattr[self, "class_name"])
@@ -248,7 +243,6 @@ class Node:
 
 class NodeDict(Node):
     def __init__(self, args, **kawrgs) -> None:
-        # ipdb.set_trace()
         assert type(args) == dict, "args must be a dict"
         super().__init__(args, **kawrgs)
         self._node_key_dict = {}
@@ -287,11 +281,11 @@ class NodeDict(Node):
 
         self.load_dynamic_objects()
 
-        def val_to_call(val):
+        def val_to_call(val, parent: Node | None = None):
             if isinstance(val, Node):
-                return val()
-            elif isinstance(val, list):
-                return [val_to_call(item) for item in val]
+                return val()  # if not isinstance(parent, ExperimentNode) else val
+            # elif isinstance(val, list):
+            #    return [val_to_call(item) for item in val]
             else:
                 return val
 
@@ -435,7 +429,6 @@ class MethodCall(Node):
         return self
 
     def __call__(self, parent: Optional[object] = None, *args, **kwargs):
-
         if self._py_object != None:
             return self._py_object
         # first create DictNode of params
@@ -461,7 +454,6 @@ class MethodCall(Node):
 
     def generate_full_dict(self):
 
-        # ipdb.set_trace()
         full_params, errors = self.param_node.parse_params()
         errors = [e for e in errors if e != None and e != []]
 
@@ -562,7 +554,6 @@ class MethodArgNode(Node):
         results = []
 
         for method in self._method_args_nodes:
-            # ipdb.set_trace()
 
             function = method.function
             method.__load__(self)
@@ -583,7 +574,6 @@ class MethodArgNode(Node):
                     gen_method["docs"] = docs
             else:
                 try:
-                    # ipdb.set_trace()
                     m = getattr(self.load_module(), function)
                     p, error = utils.get_function_args(m, full_args["params"])
                     docs = utils.parse_docs(m)
@@ -668,7 +658,6 @@ class FunctionModuleCall(MethodArgNode):
         return params, errors
 
     def __call__(self):
-
         params = self._param_node()
 
         module = self.load_module()
@@ -774,7 +763,6 @@ class Object(MethodArgNode):
 
         params, err = self.param_node.generate_full_dict()
 
-        # ipdb.set_trace()
         errors = err
 
         params, erros = utils.get_function_args(module, params)
@@ -800,7 +788,6 @@ class ClassTypeAnnotation(Node):
     class_type: str = ""
 
     def __load__(self, parent: Optional[Node] = None) -> object:
-        # ipdb.set_trace()
         self._module = self.load_module()
         return self
 
@@ -822,7 +809,6 @@ class ExperimentNode(NodeDict):
     returns: dict = {}
 
     def __init__(self, args, **kawrgs) -> None:
-        # ipdb.set_trace()
         assert type(args) == dict, "args must be a dict"
         assert "returns" in args, "returns must be in args"
         super().__init__(args, **kawrgs)
@@ -859,7 +845,6 @@ class ExperimentNode(NodeDict):
             return val
 
     def execute_experiment(self, type: str = ""):
-
         assert type in self.returns, f"{type} not in returns"
         node = self.returns[type]
 
@@ -890,7 +875,6 @@ SyntaxNode = Union[
 
 def load_node(args, parent=None):
     if isinstance(args, dict):
-        # ipdb.set_trace()
         node: Optional[SyntaxNode] = None
         for node_type in node_types:
             if node_type.is_one(args):
