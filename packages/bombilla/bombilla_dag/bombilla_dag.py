@@ -27,6 +27,16 @@ class BombillaDAG(DAG):
         self.__flatten()
 
     @classmethod
+    def python_to_dict(cls, python: str) -> dict[str, Any]:
+        return python_to_dict(python)
+
+    @classmethod
+    def python_file_to_dict(cls, filename: str) -> dict[str, Any]:
+        with open(filename, "r") as f:
+            python = f.read()
+        return python_to_dict(python)
+
+    @classmethod
     def from_json_file(cls, filename: str):
         with open(filename, "r") as f:
             content = json.loads(f.read())
