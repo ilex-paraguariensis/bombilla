@@ -1,22 +1,17 @@
 from ...models.covnet import Net
 from ...data.mnist_1989 import get_train_data, get_test_data
 from ...trainers.classifier import train, test
-from torch.optim import SGD
+import torch
 from tensorboardX import SummaryWriter
 import os
-import torch
 import sys
 
-
-network = Net()
-
-optimizer = SGD(network.parameters(), lr=0.01, momentum=0.9)
-
 save_dir: str = os.environ.get("SAVE_DIR")
-
 data_dir: str = os.environ.get("DATA_DIR")
+network = Net()
+optimizer = torch.optim.SGD(network.parameters(), lr=0.01, momentum=0.9)
 
-writer = SummaryWriter(save_dir)
+writer = SummaryWriter(log_dir=save_dir)
 
 command = sys.argv[1]
 

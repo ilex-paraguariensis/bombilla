@@ -5,7 +5,7 @@ from .nodes import (
     ClassTypeNode,
     ClassNameNode,
     MethodCall,
-    ReturnNode,
+    ValueNode,
     FunctionCall,
 )
 from typing import Any
@@ -126,6 +126,54 @@ def parse_args(
         result = val
     return result
 
+def get_class_name(val:ast.Assign | ast.AnnAssign | ast.Attribute | ast.Name, acc: list[str]) -> list[str]:
+    if isinstance(val, ast.Assign):
+        return get_class_name(val.value.func, acc)
+    elif isinstance(val, ast.AnnAssign):
+        return get_class_name(val.value.func, acc)
+    elif isinstance(val, ast.Attribute):
+        acc.append(val.attr)
+        return get_class_name(val.value, acc)
+    elif isinstance(val, ast.Name):
+        acc.append(val.id)
+        return acc
+    else:
+        return acc
+
+def parse_assign(
+    item: ast.Assign | ast.AnnAssign, imports: dict[str, str], nodes: dict[str, Node]
+) -> None:
+    if not isinstance(item.value, ast.Subscript):
+        class_name = ".".join(get_class_name(item, [])[::-1])
+        target = item.targets[0] if isinstance(item, ast.Assign) else item.target
+        if isinstance(target, ast.Name):
+            if isinstance(item.value, ast.Call):
+                if isinstance(item.value.func, ast.Name):
+                    assert item.value.func.id in imports, f"{target.id} not in imports"
+                    node = ClassNameNode(
+                        class_name=class_name,
+                        object_key=target.id,
+                        path=[target.id],
+                        module=imports[class_name.split(".")[0]],
+                    )
+                    nodes[node.object_key] = node
+                    args = parse_args(item.value.keywords, node, nodes, imports)
+                    node.params = args if args else {}
+                elif isinstance(item.value.func, ast.Attribute):
+                    if not class_name == "os":
+                        node = ClassNameNode(
+                            class_name=class_name,
+                            object_key=target.id,
+                            path=[target.id],
+                            module=imports[class_name.split(".")[0]],
+                        )
+                        nodes[node.object_key] = node
+                        args = parse_args(item.value.keywords, node, nodes, imports)
+                        node.params = args if args else {}
+                    else:
+                        node = ValueNode(object_key=target.id, path=[target.id])
+                        nodes[node.object_key] = node
+
 
 def match_if(
     value: ast.If, imports, nodes
@@ -183,38 +231,26 @@ def match_if(
 
 def python_to_dict(py_string: str) -> dict[str, Any]:
     body = ast.parse(str.encode(py_string)).body
-    nodes = {}
-    imports = {}
+    nodes: dict[str, Node] = {}
+    imports: dict[str, str] = {}
     returns = {}
+    allowed_types = (ast.Assign, ast.AnnAssign, ast.If, ast.Import, ast.ImportFrom)
+    assert all(
+        isinstance(item, allowed_types) for item in body
+    ), f"The python file must only contain assignments, imports, and one if statement. Found non-allowed type: {tuple(b for b in body if not isinstance(b, allowed_types))}"
+    assert (
+        len([item for item in body if isinstance(item, ast.If)]) == 1
+    ), "The python file must only contain one if statement"
     for item in body:
         if isinstance(item, ast.ImportFrom):
             for name in item.names:
                 imports[name.name] = item.module
+        elif isinstance(item, ast.Import):
+            for name in item.names:
+                imports[name.name] = name.name
     for item in body:
-        if isinstance(item, ast.Assign):
-            # assignment
-            for target in item.targets:
-                if isinstance(target, ast.Name):
-                    if target.id != "returns":
-                        if isinstance(item.value, ast.Call):
-                            # function call
-                            assert isinstance(item.value.func, ast.Name), ipdb.set_trace()
-                            assert (
-                                item.value.func.id in imports
-                            ), f"{target.id} not in imports"
-                            node = ClassNameNode(
-                                class_name=item.value.func.id,
-                                object_key=target.id,
-                                path=[target.id],
-                                module=imports[item.value.func.id],
-                            )
-                            nodes[node.object_key] = node
-                            args = parse_args(
-                                item.value.keywords, node, nodes, imports
-                            )
-                            node.params = args if args else {}
-            # the following elif should match "if" and "elif" statements
-
+        if isinstance(item, ast.Assign) or isinstance(item, ast.AnnAssign):
+            parse_assign(item, imports, nodes)
         elif isinstance(item, ast.If):
             returns = match_if(item, imports, nodes)
     # returns = returns | nodes  # {node.object_key: node for node in nodes}
@@ -232,7 +268,7 @@ def python_to_dict(py_string: str) -> dict[str, Any]:
     # returns = to_dict(returns)
     # assert isinstance(returns, dict)
     result = {
-        "objects": {key: val.to_dict() for key, val in nodes.items()},
+        "objects": {key: val.to_dict() for key, val in nodes.items() if not val.class_name == "os.environ.get"},
         "experiment": {key: [v.to_dict() for v in val] for key, val in returns.items()},
     }
     return result
