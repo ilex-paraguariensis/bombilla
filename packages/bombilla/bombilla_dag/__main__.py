@@ -2,8 +2,8 @@ from .bombilla_dag import BombillaDAG
 
 
 if __name__ == "__main__":
-    dag = BombillaDAG.from_json("./test_bombillas/default.json")
-    print(dag.to_py("./test_bombillas/default.py"))
+    #dag = BombillaDAG.from_json("./test_bombillas/default.json")
+    #print(dag.to_py("./test_bombillas/default.py"))
     # print(dag.print(True))
     """
     dag.plot()
@@ -17,6 +17,7 @@ if __name__ == "__main__":
     print(dag.to_json())
     """
     # dag.to_py("./test_bombillas/default.py")
-    #dag2 = BombillaDAG.from_py("./test_bombillas/default.py")
-    # print(dag2)
+    dag2 = BombillaDAG.from_py_file("./test_bombillas/default2.py")
+    print(dag2)
+    print(dag2.to_json())
     #print(dag2.to_json())

@@ -1,6 +1,13 @@
 import ast
 import ipdb
-from .nodes import Node, ClassTypeNode, ClassNameNode, FunctionCall, ReturnNode
+from .nodes import (
+    Node,
+    ClassTypeNode,
+    ClassNameNode,
+    MethodCall,
+    ReturnNode,
+    FunctionCall,
+)
 from typing import Any
 
 
@@ -32,8 +39,6 @@ def parse_args(
                 if isinstance(arg, ast.Name):
                     result[i] = "{" + arg.id + "}"
                 elif isinstance(arg, ast.Call):
-                    if arg.func.id == "AimLogger":
-                        ipdb.set_trace()
                     assert isinstance(arg.func, ast.Name)
                     assert arg.func.id in imports
                     node = ClassNameNode(
@@ -41,6 +46,7 @@ def parse_args(
                     )
                     # nodes[node.object_key] = node
                     uba = parse_args(arg.keywords, node, nodes, imports)
+                    assert isinstance(uba, dict)
                     node.params = uba
                     result[i] = node
                 elif isinstance(arg.value, ast.Constant):
@@ -64,10 +70,11 @@ def parse_args(
                             module=imports[arg.value.func.id],
                         )
                         uba = parse_args(arg.value.keywords, node, nodes, imports)
+                        assert isinstance(uba, dict)
                         node.params = uba
                         result[arg.arg] = node
                     else:
-                        node = FunctionCall(
+                        node = MethodCall(
                             path=[],
                             function_call=arg.value.func.attr,
                             reference_key=arg.value.func.value.id,
@@ -89,6 +96,7 @@ def parse_args(
                         if isinstance(uba, list):
                             result[arg.arg] = uba
                         else:
+                            assert isinstance(uba, dict)
                             vals = [(int(key), val) for key, val in uba.items()]
                             vals.sort(key=lambda x: x[0])
                             result[arg.arg] = [val for _, val in vals]
@@ -115,9 +123,62 @@ def parse_args(
         node.params = uba
         result = node
     else:
-        # TODO check if the type is a class, then it is a class type
         result = val
     return result
+
+
+def match_if(
+    value: ast.If, imports, nodes
+) -> dict[str, list[FunctionCall | MethodCall]]:
+    returns: dict[str, list[FunctionCall | MethodCall]] = {}
+    current: ast.If | None = value
+    while current != None:
+        assert isinstance(current, ast.If)
+        assert isinstance(current.test, ast.Compare)
+        assert isinstance(current.test.left, ast.Name)
+        assert isinstance(current.test.comparators[0], ast.Constant)
+        assert isinstance(current.test.ops[0], ast.Eq)
+        assert current.test.left.id == "command"
+        statements = current.body
+        command = current.test.comparators[0].value
+        acc = []
+        returns[command] = acc
+
+        for statement in statements:
+            if not isinstance(statement, ast.Pass):
+                assert isinstance(statement, ast.Expr)
+                assert isinstance(statement.value, ast.Call)
+                x = statement.value
+                if not isinstance(x.func, ast.Name):
+                    assert isinstance(x.func, ast.Attribute)
+                    assert isinstance(x.func.value, ast.Name)
+                    reference_key = x.func.value.id
+                    function_call = x.func.attr
+                    params = parse_args(x.keywords, None, nodes, imports)
+                    assert isinstance(params, dict)
+                    function_call = MethodCall(
+                        reference_key=reference_key,
+                        function_call=function_call,
+                        params=params,
+                        path=[],
+                    )
+                else:
+                    function = x.func.id
+                    params = parse_args(x.keywords, None, nodes, imports)
+                    assert isinstance(params, dict)
+                    function_call = FunctionCall(
+                        function=function,
+                        module=imports[function],
+                        params=params,
+                        path=[],
+                    )
+
+                acc.append(function_call)
+        new_current = current.orelse[0] if current.orelse else None
+        assert new_current == None or isinstance(new_current, ast.If)
+        current = new_current
+
+    return returns
 
 
 def python_to_dict(py_string: str) -> dict[str, Any]:
@@ -135,45 +196,27 @@ def python_to_dict(py_string: str) -> dict[str, Any]:
             for target in item.targets:
                 if isinstance(target, ast.Name):
                     if target.id != "returns":
-                        assert isinstance(item.value, ast.Call)
-                        # function call
-                        assert isinstance(item.value.func, ast.Name)
-                        assert (
-                            item.value.func.id in imports
-                        ), f"{target.id} not in imports"
-                        node = ClassNameNode(
-                            class_name=item.value.func.id,
-                            object_key=target.id,
-                            path=[target.id],
-                            module=imports[item.value.func.id],
-                        )
-                        nodes[node.object_key] = node
-                        uba = parse_args(item.value.keywords, node, nodes, imports)
+                        if isinstance(item.value, ast.Call):
+                            # function call
+                            assert isinstance(item.value.func, ast.Name), ipdb.set_trace()
+                            assert (
+                                item.value.func.id in imports
+                            ), f"{target.id} not in imports"
+                            node = ClassNameNode(
+                                class_name=item.value.func.id,
+                                object_key=target.id,
+                                path=[target.id],
+                                module=imports[item.value.func.id],
+                            )
+                            nodes[node.object_key] = node
+                            args = parse_args(
+                                item.value.keywords, node, nodes, imports
+                            )
+                            node.params = args if args else {}
+            # the following elif should match "if" and "elif" statements
 
-                        node.params = uba
-                    else:
-                        assert isinstance(
-                            item.value, ast.Dict
-                        ), "returns must be a dictionary"
-                        for key, val in zip(item.value.keys, item.value.values):
-                            acc = []
-                            assert isinstance(key, ast.Constant)
-                            returns[key.value] = acc
-                            assert isinstance(val, ast.List)
-                            for x in val.elts:
-
-                                reference_key = x.func.value.id
-                                function_call = x.func.attr
-                                params = parse_args(x.keywords, None, nodes, imports)
-                                # for arg in x.keywords:
-                                #     params[arg.arg] = "{" + arg.value.id + "}"
-                                function_call = FunctionCall(
-                                    reference_key=reference_key,
-                                    function_call=function_call,
-                                    params=params,
-                                    path=[],
-                                )
-                                acc.append(function_call)
+        elif isinstance(item, ast.If):
+            returns = match_if(item, imports, nodes)
     # returns = returns | nodes  # {node.object_key: node for node in nodes}
 
     def to_dict(val):

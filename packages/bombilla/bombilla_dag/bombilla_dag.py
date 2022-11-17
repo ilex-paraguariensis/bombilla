@@ -8,10 +8,11 @@ import subprocess
 from .nodes import (
     Node,
     ValueNode,
-    FunctionCall,
+    MethodCall,
     ClassNameNode,
     ClassTypeNode,
     ReturnNode,
+    FunctionCall,
 )
 from .dag import DAG
 from .python_to_dict import python_to_dict
@@ -145,15 +146,25 @@ class BombillaDAG(DAG):
             if BombillaDAG.__is_method_args(bomb):
                 for key, val in bomb["params"].items():
                     self.__from_dict(val, path + ["params", key], parent)
-            if FunctionCall.is_one(bomb):
+            if MethodCall.is_one(bomb):
                 assert parent is not None
-                function_call = FunctionCall.from_dict(bomb, path)
+                function_call = MethodCall.from_dict(bomb, path)
                 self.add_node(function_call)
                 self.add_edge(
                     from_node=bomb["reference_key"],  # bomb["reference_key"],
                     to_node=function_call,
                     path=path,
                 )
+                self.add_path_edge(parent, function_call)
+                self.add_edge(function_call, parent, path)
+                parent.assign(path, function_call)
+                assert isinstance(bomb["params"], dict)
+                for key, val in bomb["params"].items():
+                    self.__from_dict(val, path + ["params", key], function_call)
+            elif FunctionCall.is_one(bomb):
+                assert parent is not None
+                function_call = FunctionCall.from_dict(bomb, path)
+                self.add_node(function_call)
                 self.add_path_edge(parent, function_call)
                 self.add_edge(function_call, parent, path)
                 parent.assign(path, function_call)
@@ -245,7 +256,7 @@ class BombillaDAG(DAG):
         for node in self.path_sort():
             if isinstance(node, ValueNode):
                 code.append(node.to_py(at_root=True))
-            elif not (isinstance(node, FunctionCall) or isinstance(node, ReturnNode)):
+            elif not (isinstance(node, MethodCall) or isinstance(node, ReturnNode)):
                 code.append(f"{node.object_key}={node.to_py()}")
         code.append(
             "returns={"
@@ -273,7 +284,7 @@ class BombillaDAG(DAG):
             "objects": {
                 val.object_key: val.to_dict()
                 for val in self.path_sort()
-                if not type(val) in (FunctionCall, ReturnNode)
+                if not type(val) in (MethodCall, ReturnNode)
                 and not val.object_key == "save_dir"
             },
             "experiment": {

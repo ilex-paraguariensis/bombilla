@@ -12,8 +12,10 @@ from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.callbacks import ModelCheckpoint
 import os
 from aim.pytorch_lightning import AimLogger
+import sys
 
 save_dir: str = os.environ.get("SAVE_DIR")
+command: str = sys.argv[1]
 trainer = Trainer(
     gpus=1,
     max_epochs=100,
@@ -68,8 +70,14 @@ pl_model = LightningClassificationModule(
 data = CifarLightningDataModule(
     location="./data/cifar10", batch_size=32, image_size=[256, 256], crop_size=4
 )
-returns = {
-    "train": [trainer.fit(model=pl_model, datamodule=data)],
-    "test": [trainer.test(model=pl_model, datamodule=data)],
-    "restart": [],
-}
+# returns = {
+#     "train": [trainer.fit(model=pl_model, datamodule=data)],
+#     "test": [trainer.test(model=pl_model, datamodule=data)],
+#     "restart": [],
+# }
+if command == "train":
+    trainer.fit(model=pl_model, datamodule=data)
+elif command == "test":
+    trainer.test(model=pl_model, datamodule=data)
+elif command == "restart":
+    pass

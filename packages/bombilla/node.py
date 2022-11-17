@@ -664,7 +664,6 @@ class FunctionModuleCall(MethodArgNode):
         params = self._param_node()
 
         module = self.load_module()
-
         function = getattr(module, self.function)
 
         _arg, _kwarg = flatten_nameless_params(params)

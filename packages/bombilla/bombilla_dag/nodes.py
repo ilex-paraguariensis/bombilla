@@ -261,6 +261,37 @@ class ValueNode(Node):
 class FunctionCall(Node):
     def __init__(
         self,
+        function: str,
+        module: str,
+        params: dict[str, Any],
+        path: list[str],
+    ):
+        self.function = function
+        self.module = module
+        self.object_key = f"_{self.function}_{Node._rand_hex(3)}"
+        super().__init__(self.object_key, path, params=params)
+
+    @staticmethod
+    def is_one(obj: Any) -> bool:
+        return isinstance(obj, dict) and "module" in obj and "function" in obj
+
+    @classmethod
+    def from_dict(cls, bomb: Any, path: list[str]):
+        assert FunctionCall.is_one(bomb)
+        return FunctionCall(
+            function=bomb["function"],
+            module=bomb["module"],
+            params=bomb.get("params"),
+            path=path,
+        )
+
+    def to_py(self, at_root: bool = False) -> str:
+        return f"{self.function}({self._render_params(self.params)})"
+
+
+class MethodCall(Node):
+    def __init__(
+        self,
         reference_key: str,
         function_call: str,
         path: list[str],
@@ -286,8 +317,8 @@ class FunctionCall(Node):
 
     @classmethod
     def from_dict(cls, bomb: Any, path: list[str]):
-        assert FunctionCall.is_one(bomb)
-        return FunctionCall(
+        assert MethodCall.is_one(bomb)
+        return MethodCall(
             reference_key=bomb["reference_key"],
             function_call=bomb["function_call"],
             path=path,
@@ -298,14 +329,14 @@ class FunctionCall(Node):
 class ReturnNode(Node):
     def __init__(self, object_key: str, path: list[str]):
         super().__init__(object_key=object_key, path=path)
-        self.execution_cue: list[FunctionCall | None] = []
+        self.execution_cue: list[MethodCall | None] = []
 
-    def __getitem__(self, key: int) -> FunctionCall:
+    def __getitem__(self, key: int) -> MethodCall:
         result = self.execution_cue[key]
         assert result is not None
         return result
 
-    def __setitem__(self, key: int, value: FunctionCall):
+    def __setitem__(self, key: int, value: MethodCall):
         if key + 1 > len(self.execution_cue):
             self.execution_cue.extend([None] * (key - len(self.execution_cue) + 1))
         self.execution_cue[key] = value
@@ -322,7 +353,11 @@ class ReturnNode(Node):
             return False
         if len(bomb) > 0:
             return sum(
-                [isinstance(el, dict) and FunctionCall.is_one(el) for el in bomb]
+                [
+                    isinstance(el, dict)
+                    and (MethodCall.is_one(el) or FunctionCall.is_one(el))
+                    for el in bomb
+                ]
             ) == len(bomb)
         return True
 

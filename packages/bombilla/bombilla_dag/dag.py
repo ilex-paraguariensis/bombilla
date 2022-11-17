@@ -1,4 +1,4 @@
-from .nodes import Node, ValueNode, Edge, FunctionCall
+from .nodes import Node, ValueNode, Edge, MethodCall
 import subprocess
 from typing import Any
 import json
